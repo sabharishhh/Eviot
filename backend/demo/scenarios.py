@@ -19,7 +19,7 @@ class DemoScenario:
 SCENARIOS = {
     "bitcoin": DemoScenario(
         id="bitcoin",
-        title="Bitcoin Consensus (Offline Fallback)",
+        title="Bitcoin Consensus",
         description="Self-contained single-document demo using pre-loaded data",
         domain="Technology",
         query="How does Bitcoin achieve decentralized consensus and who introduced the system?",

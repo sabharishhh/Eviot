@@ -166,12 +166,15 @@ def run_ot_selection_streaming(
         best, best_cost = greedy_select(query_embs, selected_so_far, remaining)
 
         marginal_gain = prev_cost - best_cost
-        coverage_pct = round(1.0 - (best_cost / initial_cost), 4) if initial_cost > 0 else 0.0
+
+        # Calculate absolute coverage
+        coverage_pct = max(0.0, min(1.0, round(1.0 - best_cost, 4)))
         cumulative_tokens += len(best["text"].split())
 
         step += 1
         record: SentenceRecord = best["_record"]
 
+        # 1. THIS MUST BE "selection_step"
         yield {
             "event": "selection_step",
             "step": step,
@@ -198,6 +201,7 @@ def run_ot_selection_streaming(
             else:
                 no_gain_count = 0
             if no_gain_count >= patience:
+                # 2. Yield saturation when patience is exceeded
                 yield {
                     "event": "saturation_reached",
                     "step": step,
@@ -209,11 +213,12 @@ def run_ot_selection_streaming(
                 }
                 return
 
+    # 3. Final fallback saturation yield (Fixed the coverage math here too)
     yield {
         "event": "saturation_reached",
         "step": step,
         "final_ot_cost": round(prev_cost, 6),
-        "final_coverage_pct": round(1.0 - (prev_cost / initial_cost), 4) if initial_cost > 0 else 0.0,
+        "final_coverage_pct": max(0.0, min(1.0, round(1.0 - prev_cost, 4))),
         "total_sentences_selected": step,
         "total_tokens": cumulative_tokens,
         "stopping_reason": "fixed_k_reached" if mode == "fixed" else "k_max_reached",
