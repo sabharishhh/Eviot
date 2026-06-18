@@ -1,29 +1,34 @@
+import os
 import torch
-import torch.nn.functional as F
-from transformers import AutoTokenizer, AutoModel
-
+from openai import OpenAI
 
 class Encoder:
-    def __init__(self, model_name="BAAI/bge-base-en-v1.5", device=None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
+    def __init__(self, model_name="text-embedding-3-small", device=None):
+        """
+        Drop-in replacement for the HuggingFace BGE encoder.
+        Requires the OPENAI_API_KEY environment variable to be set.
+        """
+        self.model_name = model_name
+        # The device parameter is kept for compatibility with older code,
+        # but OpenAI handles the compute remotely.
+        self.device = device 
+        
+        # Initialize the synchronous OpenAI client
+        self.client = OpenAI()
 
-    @torch.no_grad()
     def encode(self, texts):
+        # OpenAI expects a list, even for a single string
         if isinstance(texts, str):
             texts = [texts]
-
-        inputs = self.tokenizer(
-            texts,
-            padding=True,
-            truncation=True,
-            max_length=256,
-            return_tensors="pt"
-        ).to(self.device)
-
-        outputs = self.model(**inputs)
-        emb = outputs.last_hidden_state[:, 0]  # CLS
-        emb = F.normalize(emb, dim=-1)
-        return emb.cpu()
+            
+        # Call the OpenAI API
+        response = self.client.embeddings.create(
+            input=texts,
+            model=self.model_name
+        )
+        
+        # Extract the embeddings (1536 dimensions for text-embedding-3-small)
+        embeddings = [data.embedding for data in response.data]
+        
+        # Return exactly what eviot math expects: a PyTorch tensor on the CPU
+        return torch.tensor(embeddings, dtype=torch.float32)

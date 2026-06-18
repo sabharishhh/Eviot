@@ -1,8 +1,20 @@
 import torch
 import spacy
 from spacy.cli import download
-from backend.eviot.encoders.encoder import Encoder
+import streamlit as st
+from eviot.encoders.encoder import Encoder
 
+@st.cache_resource
+def load_spacy():
+    try:
+        return spacy.load("en_core_web_sm")
+    except OSError:
+        download("en_core_web_sm")
+        return spacy.load("en_core_web_sm")
+
+@st.cache_resource
+def load_encoder():
+    return Encoder()
 
 nlp = load_spacy()
 encoder = load_encoder()

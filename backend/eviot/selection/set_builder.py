@@ -1,4 +1,4 @@
-from backend.eviot.selection.adaptive import build_context_set_adaptive
+from eviot.selection.adaptive import build_context_set_adaptive
 
 def build_context_set_fixed(query_embs, candidates, k):
     return build_context_set_adaptive(

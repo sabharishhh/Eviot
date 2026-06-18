@@ -66,7 +66,7 @@ export default function LeftPanel({ session, onSessionUpdate, query, onQueryChan
         <textarea 
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Ask a complex, multi-part question that requires synthesizing multiple documents..."
+          placeholder="Enter your prompt here..."
           className="flex-1 bg-[#1a1d27] border border-slate-700 rounded-xl p-4 text-sm text-slate-200 outline-none focus:border-indigo-500 resize-none min-h-[150px]"
         />
       </div>

@@ -32,8 +32,8 @@ encoder = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global encoder
-    print("Loading BAAI/bge-base-en-v1.5 encoder... (This might take a moment)")
-    encoder = Encoder(model_name="BAAI/bge-base-en-v1.5")
+    print("Loading BAAI/bge-base-en-v1.5 encoder...")
+    encoder = Encoder(model_name="text-embedding-3-small")
     
     # Pre-warm the encoder to prevent latency on the first query
     encoder.encode(["Warming up the encoder."])

@@ -1,4 +1,4 @@
-from backend.eviot.selection.greedy import greedy_select
+from eviot.selection.greedy import greedy_select
 
 def build_context_set_adaptive(
     query_embs,
