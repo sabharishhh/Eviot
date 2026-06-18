@@ -1,0 +1,22 @@
+[project]
+name = "makesense"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.111.0",
+    "openai>=1.30.0",
+    "pot>=0.9.3",
+    "pydantic>=2.7.0",
+    "pymupdf>=1.24.0",
+    "python-docx>=1.1.0",
+    "python-dotenv>=1.0.1",
+    "python-multipart>=0.0.9",
+    "requests>=2.32.0",
+    "sentence-transformers>=3.0.0",
+    "spacy>=3.7.4",
+    "torch>=2.3.0",
+    "transformers>=4.41.0",
+    "uvicorn[standard]>=0.30.0",
+]
