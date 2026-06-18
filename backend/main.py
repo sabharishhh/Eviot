@@ -111,7 +111,7 @@ class QueryRequest(BaseModel):
     query: str
     mode: str = "adaptive"
     use_decomposition: bool = True
-    retrieval_engine: str = "llm"  
+    retrieval_engine: str = "ot"  
     params: dict = {}
 
 @app.post("/query")
