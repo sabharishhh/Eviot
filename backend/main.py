@@ -1,27 +1,25 @@
 import time
+import json
+import asyncio
+import traceback
 from contextlib import asynccontextmanager
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
-from session import create_session, store_sentences, SentenceRecord
+from session import create_session, store_sentences, get_session, SentenceRecord
 from ingestion.parser import parse_file
 from ingestion.chunker import chunk_into_sentences
 
-import json
-import asyncio
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import Optional
-
 from retrieval.naive_rag import naive_top_k, compute_internal_redundancy
-from demo.scenarios import SCENARIOS
-from llm.answer import get_llm_answer
-
-from session import get_session
 from retrieval.ot_engine import encode_query_plain, encode_query_decomposed, run_ot_selection_streaming
+from retrieval.llm_engine import run_llm_selection_streaming
+
 from llm.answer import get_llm_answer
+from demo.scenarios import SCENARIOS
 
 # We import your eviot library here!
 from eviot.encoders.encoder import Encoder
@@ -113,6 +111,7 @@ class QueryRequest(BaseModel):
     query: str
     mode: str = "adaptive"
     use_decomposition: bool = True
+    retrieval_engine: str = "llm"  
     params: dict = {}
 
 @app.post("/query")
@@ -124,45 +123,68 @@ async def query_endpoint(req: QueryRequest):
         raise HTTPException(status_code=400, detail="No documents ingested")
 
     async def event_generator():
-        # 1. Embed query
-        if req.use_decomposition:
-            phrases, q_embs = encode_query_decomposed(req.query, encoder)
-            yield make_sse_event("query_embedded", {
-                "decomposed": True,
-                "phrases": phrases,
+        try:
+            # 1. Embed query
+            if req.use_decomposition:
+                phrases, q_embs = encode_query_decomposed(req.query, encoder)
+                yield make_sse_event("query_embedded", {
+                    "decomposed": True,
+                    "phrases": phrases,
+                })
+            else:
+                q_embs = encode_query_plain(req.query, encoder)
+                yield make_sse_event("query_embedded", {
+                    "decomposed": False,
+                    "phrases": None,
+                })
+
+            # 2. Stream selection steps
+            selected_texts = []
+            
+            # --- ROUTING LOGIC ---
+            if req.retrieval_engine == "llm":
+                event_stream = run_llm_selection_streaming(req.query, session.sentences)
+            else:
+                event_stream = run_ot_selection_streaming(
+                    query_embs=q_embs,
+                    sentence_records=session.sentences,
+                    mode=req.mode,
+                    params=req.params,
+                )
+
+            for event in event_stream:
+                if event["event"] == "selection_step":
+                    selected_texts.append(event["sentence_text"])
+                
+                elif event["event"] == "saturation_reached":
+                    tail = event.get("tail_truncated", 0)
+                    if tail > 0:
+                        selected_texts = selected_texts[:-tail]
+
+                yield make_sse_event(event["event"], event)
+                
+                # If using LLM, add a tiny artificial delay so the UI animations trigger nicely
+                if req.retrieval_engine == "llm":
+                    await asyncio.sleep(0.3) 
+                else:
+                    await asyncio.sleep(0)
+
+            # 3. Stream LLM answer
+            full_answer = ""
+            for token in get_llm_answer(selected_texts, req.query):
+                full_answer += token
+                yield make_sse_event("llm_token", {"token": token})
+                await asyncio.sleep(0)
+
+            yield make_sse_event("answer_complete", {
+                "answer": full_answer,
+                "context_sentences": selected_texts,
+                "total_context_tokens": sum(len(t.split()) for t in selected_texts),
             })
-        else:
-            q_embs = encode_query_plain(req.query, encoder)
-            yield make_sse_event("query_embedded", {
-                "decomposed": False,
-                "phrases": None,
-            })
-
-        # 2. Stream selection steps (Optimal Transport)
-        selected_texts = []
-        for event in run_ot_selection_streaming(
-            query_embs=q_embs,
-            sentence_records=session.sentences,
-            mode=req.mode,
-            params=req.params,
-        ):
-            if event["event"] == "selection_step":
-                selected_texts.append(event["sentence_text"])
-            yield make_sse_event(event["event"], event)
-            await asyncio.sleep(0)  # Yield control to flush buffer!
-
-        # 3. Stream LLM answer
-        full_answer = ""
-        for token in get_llm_answer(selected_texts, req.query):
-            full_answer += token
-            yield make_sse_event("llm_token", {"token": token})
-            await asyncio.sleep(0)
-
-        yield make_sse_event("answer_complete", {
-            "answer": full_answer,
-            "context_sentences": selected_texts,
-            "total_context_tokens": sum(len(t.split()) for t in selected_texts),
-        })
+            
+        except Exception as e:
+            traceback.print_exc()
+            yield make_sse_event("stream_error", {"detail": str(e)})
 
     return StreamingResponse(
         event_generator(),

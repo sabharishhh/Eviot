@@ -15,7 +15,7 @@ export default function AnswerPanel({ answer, isStreaming }: Props) {
       
       <div className="flex items-center gap-2 mb-3 text-indigo-400 font-semibold text-sm">
         <Bot size={18} />
-        <span>MakeSense Synthesis</span>
+        <span>LLM Response</span>
         {isStreaming && <span className="flex w-2 h-2 rounded-full bg-indigo-400 animate-pulse ml-2" />}
       </div>
       

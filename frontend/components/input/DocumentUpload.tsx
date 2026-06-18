@@ -64,7 +64,6 @@ export default function DocumentUpload({ session, onSessionUpdate }: Props) {
             <span className="truncate flex items-center gap-1">
               <FileText size={12} /> {session.documents.length} File(s)
             </span>
-            <span className="font-mono">{session.totalSentences} Sentences</span>
           </div>
         </div>
       )}
