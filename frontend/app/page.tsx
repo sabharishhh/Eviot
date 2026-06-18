@@ -29,7 +29,7 @@ export default function Home() {
   const handleRun = async () => {
     if (!query.trim() || !session.sessionId) return;
     reset();
-    await runQuery(query, mode, params, false);
+    await runQuery(query, mode, params, true);
   };
 
   return (

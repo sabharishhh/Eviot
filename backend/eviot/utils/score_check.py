@@ -1,8 +1,8 @@
 import torch
 
-from backend.eviot.query.decompose import extract_phrases
-from backend.eviot.ot.cost import ot_cost
-from backend.eviot.encoders.encoder import Encoder
+from eviot.query.decompose import extract_phrases
+from eviot.ot.cost import ot_cost
+from eviot.encoders.encoder import Encoder
 
 USE_QUERY_DECOMPOSITION = False
 

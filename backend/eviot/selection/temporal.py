@@ -1,6 +1,6 @@
-from backend.eviot.data.slicing import slice_candidates
-from backend.eviot.selection.adaptive import build_context_set_adaptive
-from backend.eviot.ot.cost import ot_cost
+from eviot.data.slicing import slice_candidates
+from eviot.selection.adaptive import build_context_set_adaptive
+from eviot.ot.cost import ot_cost
 import torch
 
 def build_temporal_context(

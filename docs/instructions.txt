@@ -1,0 +1,8 @@
+test FastAPI
+
+uvicorn main:app --reload
+
+curl -X POST http://localhost:8000/ingest \
+  -F "files=@/Users/sabharishhh/Developer/makesense/backend/demo/data/bitcoin/consensus.txt"
+
+npm run dev

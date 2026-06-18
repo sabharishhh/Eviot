@@ -1,7 +1,7 @@
 import re
 import torch
 import streamlit as st
-from backend.eviot.encoders.encoder import Encoder
+from eviot.encoders.encoder import Encoder
 
 @st.cache_resource
 def load_encoder():

@@ -1,5 +1,5 @@
 import torch
-from backend.eviot.ot.cost import ot_cost
+from eviot.ot.cost import ot_cost
 
 def greedy_select(query_embs, current, remaining, dense_prune_k=20):
     q_centroid = query_embs.mean(dim=0, keepdim=True)

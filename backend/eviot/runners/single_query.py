@@ -1,9 +1,9 @@
-from backend.eviot.query.decompose import extract_phrases
-from backend.eviot.encoders.encoder import Encoder
+from eviot.query.decompose import extract_phrases
+from eviot.encoders.encoder import Encoder
 
-from backend.eviot.selection.set_builder import build_context_set_fixed
-from backend.eviot.selection.adaptive import build_context_set_adaptive
-from backend.eviot.selection.temporal import build_temporal_context
+from eviot.selection.set_builder import build_context_set_fixed
+from eviot.selection.adaptive import build_context_set_adaptive
+from eviot.selection.temporal import build_temporal_context
 
 CONFIG = {
 
