@@ -61,7 +61,7 @@ export default function LeftPanel({ session, onSessionUpdate, query, onQueryChan
 
       <div className="flex flex-col gap-2 flex-1">
         <label className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-          Research Query
+          User Prompt
         </label>
         <textarea 
           value={query}
@@ -79,7 +79,7 @@ export default function LeftPanel({ session, onSessionUpdate, query, onQueryChan
             ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
             : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"}`}
       >
-        {isRunning ? "Running Optimal Transport..." : <><Play size={16} /> Run MakeSense</>}
+        {isRunning ? "Running Optimal Transport..." : <><Play size={16} /> Run</>}
       </button>
     </div>
   );

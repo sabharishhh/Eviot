@@ -39,11 +39,11 @@ export default function Home() {
       <div className="h-14 border-b border-slate-800 bg-[#12141c] flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center font-bold text-white tracking-tighter">
-            MS
+            EO
           </div>
-          <span className="font-bold text-lg tracking-tight">MakeSense</span>
+          <span className="font-bold text-lg tracking-tight">Eviot</span>
           <span className="text-xs text-slate-500 font-mono ml-2 border border-slate-700 px-2 py-0.5 rounded-full">
-            v1.0 • OT Research Preview
+            v1.0 • Online
           </span>
         </div>
         <a 
