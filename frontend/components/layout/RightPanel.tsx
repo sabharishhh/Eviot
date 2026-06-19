@@ -32,7 +32,7 @@ export default function RightPanel({ queryState }: Props) {
       {/* Bottom Half: Clean Context Log */}
       <div className="flex flex-col min-h-[40%] bg-[#12141c] border border-slate-800 rounded-xl p-6 shadow-sm">
         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-          Retrieved Context
+          Retrieved Semantic Contexts
         </h3>
         <div className="flex-1">
           <ContextLog steps={queryState.steps} />

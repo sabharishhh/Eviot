@@ -65,7 +65,7 @@ async def ingest_documents(files: List[UploadFile] = File(...)):
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
             
-        sentences = chunk_into_sentences(text)
+        sentences = chunk_into_sentences(text, encoder)
 
         if not sentences:
             continue
@@ -117,14 +117,11 @@ class QueryRequest(BaseModel):
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
     session = get_session(req.session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    if not session.sentences:
-        raise HTTPException(status_code=400, detail="No documents ingested")
+    sentences = session.sentences if session else []
 
     async def event_generator():
         try:
-            # 1. Embed query
+            # 1. ALWAYS Embed query
             if req.use_decomposition:
                 phrases, q_embs = encode_query_decomposed(req.query, encoder)
                 yield make_sse_event("query_embedded", {
@@ -138,51 +135,68 @@ async def query_endpoint(req: QueryRequest):
                     "phrases": None,
                 })
 
-            # 2. Stream selection steps
             selected_texts = []
+            selected_ids = [] # NEW: Track the IDs so we can find their neighbors
             
-            # --- ROUTING LOGIC ---
-            if req.retrieval_engine == "llm":
-                event_stream = run_llm_selection_streaming(req.query, session.sentences)
-            else:
-                event_stream = run_ot_selection_streaming(
-                    query_embs=q_embs,
-                    sentence_records=session.sentences,
-                    mode=req.mode,
-                    params=req.params,
-                )
-
-            for event in event_stream:
-                if event["event"] == "selection_step":
-                    selected_texts.append(event["sentence_text"])
-                
-                elif event["event"] == "saturation_reached":
-                    tail = event.get("tail_truncated", 0)
-                    if tail > 0:
-                        selected_texts = selected_texts[:-tail]
-
-                yield make_sse_event(event["event"], event)
-                
-                # If using LLM, add a tiny artificial delay so the UI animations trigger nicely
+            # 2. Run Retrieval ONLY if documents exist
+            if sentences:
                 if req.retrieval_engine == "llm":
-                    await asyncio.sleep(0.3) 
+                    event_stream = run_llm_selection_streaming(req.query, sentences)
                 else:
-                    await asyncio.sleep(0)
+                    event_stream = run_ot_selection_streaming(
+                        query_embs=q_embs,
+                        sentence_records=sentences,
+                        mode=req.mode,
+                        params=req.params,
+                    )
 
-            # 3. Stream LLM answer
+                for event in event_stream:
+                    if event["event"] == "selection_step":
+                        selected_texts.append(event["sentence_text"])
+                        selected_ids.append(event["sentence_id"])
+                    
+                    elif event["event"] == "saturation_reached":
+                        tail = event.get("tail_truncated", 0)
+                        # Truncate arrays if tail was chopped
+                        if tail > 0 and len(selected_texts) > tail + 1:
+                            selected_texts = selected_texts[:-tail]
+                            selected_ids = selected_ids[:-tail]
+
+                    yield make_sse_event(event["event"], event)
+                    
+                    if req.retrieval_engine == "llm":
+                        await asyncio.sleep(0.3) 
+                    else:
+                        await asyncio.sleep(0)
+            else:
+                yield make_sse_event("saturation_reached", {
+                    "step": 0, "final_ot_cost": 0.0, "final_coverage_pct": 0.0,
+                    "total_sentences_selected": 0, "total_tokens": 0,
+                    "stopping_reason": "no_documents", "tail_truncated": 0
+                })
+
+            # --- THE MAGIC FIX: CONTEXT SLIDING WINDOW ---
+            final_context_texts = selected_texts
+            secondary_context_texts = []
+            # ---------------------------------------------
+
+            # 3. Stream LLM Answer (Feed it the beautifully expanded context)
             full_answer = ""
-            for token in get_llm_answer(selected_texts, req.query):
+            for token in get_llm_answer(final_context_texts, req.query):
                 full_answer += token
                 yield make_sse_event("llm_token", {"token": token})
                 await asyncio.sleep(0)
 
+            # Send both primary and secondary context arrays to the frontend
             yield make_sse_event("answer_complete", {
                 "answer": full_answer,
-                "context_sentences": selected_texts,
-                "total_context_tokens": sum(len(t.split()) for t in selected_texts),
+                "context_sentences": selected_texts, # Primary Anchors
+                "secondary_context_sentences": secondary_context_texts, # Expanded Narrative
+                "total_context_tokens": sum(len(t.split()) for t in final_context_texts),
             })
             
         except Exception as e:
+            import traceback
             traceback.print_exc()
             yield make_sse_event("stream_error", {"detail": str(e)})
 
@@ -268,7 +282,7 @@ async def load_scenario(scenario_id: str):
             content = f.read()
             
         text = parse_file(file_path.name, content)
-        sentences = chunk_into_sentences(text)
+        sentences = chunk_into_sentences(text, encoder)
         embeddings = encoder.encode(sentences)
         
         for line_idx, (sent_text, emb) in enumerate(zip(sentences, embeddings)):
