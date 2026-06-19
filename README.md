@@ -126,6 +126,7 @@ Add your API key to the `.env` file:
 
 ```env
 OPENAI_API_KEY=your_api_key_here
+HF_TOKEN=your_huggingface_token
 ```
 
 Start the server:
@@ -187,4 +188,3 @@ Building focused evidence sets from long papers and academic publications.
 ### Enterprise Knowledge Systems
 
 Improving retrieval quality for internal knowledge assistants and document intelligence platforms.
-
