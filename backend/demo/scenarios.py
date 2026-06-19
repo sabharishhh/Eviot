@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-# This points to backend/demo/data/
 DATA_DIR = Path(__file__).parent / "data"
 
 @dataclass
@@ -13,9 +12,8 @@ class DemoScenario:
     query: str
     mode: str
     params: dict
-    doc_files: list[tuple[str, Path]]  # (display_name, path)
+    doc_files: list[tuple[str, Path]]
 
-# The registry of all our pre-built demos
 SCENARIOS = {
     "bitcoin": DemoScenario(
         id="bitcoin",
@@ -26,7 +24,6 @@ SCENARIOS = {
         mode="adaptive",
         params={"epsilon": 0.01, "patience": 2, "k_max": 12},
         doc_files=[
-            # Notice we are using 'consensus.txt' to match the file you created!
             ("Bitcoin Overview", DATA_DIR / "bitcoin" / "consensus.txt"),
         ],
     ),
@@ -44,6 +41,4 @@ SCENARIOS = {
         ],
     ),
 
-    # Note for later: You can easily add the Legal, Medical, and Tech Spec 
-    # scenarios from the product specification document here using the exact same format!
 }

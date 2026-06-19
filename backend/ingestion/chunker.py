@@ -5,7 +5,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 _nlp = None
 
-
 def get_nlp():
     global _nlp
 
@@ -14,7 +13,6 @@ def get_nlp():
             _nlp = spacy.load("en_core_web_sm")
         except OSError:
             from spacy.cli import download
-
             download("en_core_web_sm")
             _nlp = spacy.load("en_core_web_sm")
 
@@ -62,17 +60,13 @@ def chunk_into_sentences(
 ) -> List[str]:
     """
     Semantic chunker using embedding similarity.
-
     Usage:
-
         chunks = chunk_into_sentences(text, encoder)
-
     Returns:
         List[str]
     """
 
     nlp = get_nlp()
-
     doc = nlp(text)
 
     sentences = [
@@ -87,23 +81,12 @@ def chunk_into_sentences(
     if len(sentences) <= 3:
         return [" ".join(sentences)]
 
-    # --------------------------------------------------
-    # Embed each sentence
-    # --------------------------------------------------
-
     sentence_embeddings = encoder.encode(sentences)
-
-    # convert tensors if needed
     sentence_embeddings = np.asarray(sentence_embeddings)
-
-    # --------------------------------------------------
-    # Adjacent similarities
-    # --------------------------------------------------
 
     similarities = []
 
     for i in range(len(sentence_embeddings) - 1):
-
         sim = cosine_similarity(
             sentence_embeddings[i].reshape(1, -1),
             sentence_embeddings[i + 1].reshape(1, -1),
@@ -111,44 +94,25 @@ def chunk_into_sentences(
 
         similarities.append(float(sim))
 
-    # --------------------------------------------------
-    # Dynamic threshold
-    # --------------------------------------------------
-
     mean_sim = np.mean(similarities)
     std_sim = np.std(similarities)
 
     threshold = mean_sim - std_sim
-
-    # prevent pathological splits
     threshold = max(0.30, min(threshold, 0.80))
-
-    # --------------------------------------------------
-    # Find semantic breakpoints
-    # --------------------------------------------------
 
     breakpoints = []
 
     for idx, sim in enumerate(similarities):
-
         if sim < threshold:
             breakpoints.append(idx)
 
-    # --------------------------------------------------
-    # Build semantic chunks
-    # --------------------------------------------------
-
     chunks = []
-
     start = 0
 
     for bp in breakpoints:
-
         chunk = " ".join(sentences[start : bp + 1])
-
         if chunk.strip():
             chunks.append(chunk)
-
         start = bp + 1
 
     final_chunk = " ".join(sentences[start:])
@@ -156,16 +120,10 @@ def chunk_into_sentences(
     if final_chunk.strip():
         chunks.append(final_chunk)
 
-    # --------------------------------------------------
-    # Merge tiny chunks
-    # --------------------------------------------------
-
     merged_chunks = []
-
     i = 0
 
     while i < len(chunks):
-
         current = chunks[i]
 
         if (
@@ -176,19 +134,12 @@ def chunk_into_sentences(
             i += 1
 
         merged_chunks.append(current)
-
         i += 1
-
-    # --------------------------------------------------
-    # Split huge chunks
-    # --------------------------------------------------
 
     final_chunks = []
 
     for chunk in merged_chunks:
-
         if len(chunk.split()) > max_chunk_words:
-
             final_chunks.extend(
                 _split_large_chunk(
                     chunk,
@@ -196,7 +147,6 @@ def chunk_into_sentences(
                     overlap=2,
                 )
             )
-
         else:
             final_chunks.append(chunk)
 

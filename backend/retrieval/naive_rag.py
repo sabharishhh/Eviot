@@ -8,15 +8,14 @@ def naive_top_k(
     k: int,
 ) -> list[dict]:
     """Cosine similarity top-k retrieval baseline."""
-    # Treat the query as a single centroid vector
+
     q_centroid = query_embs.mean(dim=0)
     
     scored = []
     for rec in sentence_records:
         sim = torch.cosine_similarity(q_centroid, rec.embedding, dim=0).item()
         scored.append((rec, sim))
-    
-    # Sort by highest similarity
+
     scored.sort(key=lambda x: x[1], reverse=True)
     top = scored[:k]
     

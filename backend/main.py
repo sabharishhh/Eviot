@@ -21,10 +21,8 @@ from retrieval.llm_engine import run_llm_selection_streaming
 from llm.answer import get_llm_answer
 from demo.scenarios import SCENARIOS
 
-# We import your eviot library here!
 from eviot.encoders.encoder import Encoder
 
-# Global singleton for the encoder
 encoder = None
 
 @asynccontextmanager
@@ -33,8 +31,7 @@ async def lifespan(app: FastAPI):
     print("Loading BAAI/bge-base-en-v1.5 encoder...")
     encoder = Encoder(model_name="text-embedding-3-small")
     
-    # Pre-warm the encoder to prevent latency on the first query
-    encoder.encode(["Warming up the encoder."])
+    encoder.encode(["Preparing the encoder."])
     print("Encoder ready. FastAPI is up.")
     yield
 
@@ -70,7 +67,7 @@ async def ingest_documents(files: List[UploadFile] = File(...)):
         if not sentences:
             continue
 
-        # Bulk encode all sentences in this document for maximum speed
+        # Bulk encode
         embeddings = encoder.encode(sentences)
 
         for line_idx, (sent_text, emb) in enumerate(zip(sentences, embeddings)):
@@ -86,13 +83,11 @@ async def ingest_documents(files: List[UploadFile] = File(...)):
         doc_summaries.append({
             "filename": file.filename,
             "num_sentences": len(sentences),
-            "num_pages": 1, # simplified metadata for demo
+            "num_pages": 1,
             "status": "encoded"
         })
 
-    # Store in memory cache (this implicitly moves tensors to CPU via our session.py)
     store_sentences(session.session_id, all_sentence_records)
-
     encoding_time_ms = int((time.time() - start_time) * 1000)
 
     return {
@@ -121,7 +116,6 @@ async def query_endpoint(req: QueryRequest):
 
     async def event_generator():
         try:
-            # 1. ALWAYS Embed query
             if req.use_decomposition:
                 phrases, q_embs = encode_query_decomposed(req.query, encoder)
                 yield make_sse_event("query_embedded", {
@@ -136,9 +130,8 @@ async def query_endpoint(req: QueryRequest):
                 })
 
             selected_texts = []
-            selected_ids = [] # NEW: Track the IDs so we can find their neighbors
-            
-            # 2. Run Retrieval ONLY if documents exist
+            selected_ids = []
+
             if sentences:
                 if req.retrieval_engine == "llm":
                     event_stream = run_llm_selection_streaming(req.query, sentences)
@@ -157,7 +150,6 @@ async def query_endpoint(req: QueryRequest):
                     
                     elif event["event"] == "saturation_reached":
                         tail = event.get("tail_truncated", 0)
-                        # Truncate arrays if tail was chopped
                         if tail > 0 and len(selected_texts) > tail + 1:
                             selected_texts = selected_texts[:-tail]
                             selected_ids = selected_ids[:-tail]
@@ -175,23 +167,19 @@ async def query_endpoint(req: QueryRequest):
                     "stopping_reason": "no_documents", "tail_truncated": 0
                 })
 
-            # --- THE MAGIC FIX: CONTEXT SLIDING WINDOW ---
             final_context_texts = selected_texts
             secondary_context_texts = []
-            # ---------------------------------------------
 
-            # 3. Stream LLM Answer (Feed it the beautifully expanded context)
             full_answer = ""
             for token in get_llm_answer(final_context_texts, req.query):
                 full_answer += token
                 yield make_sse_event("llm_token", {"token": token})
                 await asyncio.sleep(0)
 
-            # Send both primary and secondary context arrays to the frontend
             yield make_sse_event("answer_complete", {
                 "answer": full_answer,
-                "context_sentences": selected_texts, # Primary Anchors
-                "secondary_context_sentences": secondary_context_texts, # Expanded Narrative
+                "context_sentences": selected_texts,
+                "secondary_context_sentences": secondary_context_texts,
                 "total_context_tokens": sum(len(t.split()) for t in final_context_texts),
             })
             

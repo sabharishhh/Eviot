@@ -4,7 +4,6 @@ from typing import Generator, List
 from eviot.ot.cost import ot_cost
 from session import SentenceRecord
 
-# --- LINGUISTIC DECOMPOSITION CONSTANTS ---
 _STOPWORDS = {
     "what", "how", "does", "do", "can", "is", "are",
     "the", "a", "an", "of", "in", "on", "for", "to", "with"
@@ -14,7 +13,6 @@ _INTERROGATIVES = {
     "what", "how", "does", "do", "can", "is", "are"
 }
 
-# --- HELPER FUNCTIONS ---
 def _normalize(text: str) -> str:
     return text.lower().strip()
 
@@ -63,24 +61,20 @@ def encode_query_decomposed(query: str, encoder) -> tuple[list[str], torch.Tenso
     query_tokens = {t.text.lower() for t in doc if t.is_alpha}
     candidates = []
 
-    # 1. Extract Noun Chunks
     for chunk in doc.noun_chunks:
         if len(_content_words(chunk)) >= 2:
             candidates.append(chunk.text)
 
-    # 2. Extract significant standalone nouns
     for token in doc:
         if token.pos_ in {"NOUN", "PROPN"} and token.text.lower() not in _STOPWORDS:
             candidates.append(token.text)
 
-    # 3. Extract Verb Spans (Crucial for multi-hop actions)
     for token in doc:
         if token.pos_ == "VERB":
             span = doc[token.left_edge.i: token.right_edge.i + 1]
             if len(_content_words(span)) >= 2:
                 candidates.append(span.text)
 
-    # 4. Deduplicate
     seen = set()
     unique_candidates = []
     for c in candidates:
@@ -89,7 +83,6 @@ def encode_query_decomposed(query: str, encoder) -> tuple[list[str], torch.Tenso
             seen.add(norm_c)
             unique_candidates.append(norm_c)
 
-    # 5. Filter out interrogatives and oversized chunks
     filtered = []
     for c in unique_candidates:
         if _is_interrogative(c):
@@ -98,13 +91,11 @@ def encode_query_decomposed(query: str, encoder) -> tuple[list[str], torch.Tenso
         if overlap < 0.7:
             filtered.append(c)
 
-    # Fallback if filtering was too aggressive
     if not filtered:
         filtered = [t.text.lower() for t in doc if t.is_alpha and t.text.lower() not in _STOPWORDS]
         if not filtered:
             filtered = [query]
 
-    # 6. Filter by semantic similarity (keep distinct vectors)
     embs = encoder.encode(filtered)
     if embs.ndim == 1:
         embs = embs.unsqueeze(0)
@@ -113,22 +104,18 @@ def encode_query_decomposed(query: str, encoder) -> tuple[list[str], torch.Tenso
     
     keep = []
     for i, e in enumerate(embs_tensor):
-        # Only keep if it is NOT highly similar to an already kept phrase
         if all(torch.cosine_similarity(e, embs_tensor[j], dim=0).item() < 0.9 for j in keep):
             keep.append(i)
 
-    # 7. Final suppression of grammatical subphrases
     phrases = _suppress_subphrases([filtered[i] for i in keep])
-    phrases = phrases[:8]  # Limit max phrases to prevent OT matrix bloat
+    phrases = phrases[:8]
 
-    # Final embed
     final_embs = encoder.encode(phrases)
     if final_embs.ndim == 1:
         final_embs = final_embs.unsqueeze(0)
         
     return phrases, final_embs.cpu()
 
-# --- OPTIMAL TRANSPORT STREAMING ---
 def run_ot_selection_streaming(
     query_embs: torch.Tensor,
     sentence_records: List[SentenceRecord],
@@ -139,7 +126,6 @@ def run_ot_selection_streaming(
     Generator that yields one event dict per selection step.
     The caller wraps this in an SSE response.
     """
-    # Build candidate dicts that eviot expects
     candidates = [
         {"text": s.text, "emb": s.embedding, "_record": s}
         for s in sentence_records
@@ -162,19 +148,15 @@ def run_ot_selection_streaming(
     from eviot.selection.greedy import greedy_select
 
     while remaining and step < (k_fixed if mode == "fixed" else k_max):
-        # Find best next candidate
         best, best_cost = greedy_select(query_embs, selected_so_far, remaining)
-
         marginal_gain = prev_cost - best_cost
 
-        # Calculate absolute coverage
         coverage_pct = max(0.0, min(1.0, round(1.0 - best_cost, 4)))
         cumulative_tokens += len(best["text"].split())
 
         step += 1
         record: SentenceRecord = best["_record"]
 
-        # 1. THIS MUST BE "selection_step"
         yield {
             "event": "selection_step",
             "step": step,
@@ -195,13 +177,12 @@ def run_ot_selection_streaming(
         if mode == "fixed":
             if step >= k_fixed:
                 break
-        else:  # adaptive
+        else: 
             if marginal_gain < epsilon:
                 no_gain_count += 1
             else:
                 no_gain_count = 0
             if no_gain_count >= patience:
-                # 2. Yield saturation when patience is exceeded
                 yield {
                     "event": "saturation_reached",
                     "step": step,
@@ -213,7 +194,6 @@ def run_ot_selection_streaming(
                 }
                 return
 
-    # 3. Final fallback saturation yield (Fixed the coverage math here too)
     yield {
         "event": "saturation_reached",
         "step": step,

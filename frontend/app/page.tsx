@@ -35,7 +35,7 @@ export default function Home() {
   return (
     <div className="h-screen w-screen bg-[#0f1117] text-slate-100 flex flex-col font-sans overflow-hidden">
       
-      {/* Sleek Top Navbar */}
+      {/* Top Navbar */}
       <div className="h-14 border-b border-slate-800 bg-[#12141c] flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-indigo-600 flex items-center justify-center font-bold text-white tracking-tighter">
@@ -54,7 +54,7 @@ export default function Home() {
         </a>
       </div>
 
-      {/* Two-Panel Layout */}
+      {/* Split Layout */}
       <div className="flex flex-1 overflow-hidden">
         <LeftPanel
           session={session}

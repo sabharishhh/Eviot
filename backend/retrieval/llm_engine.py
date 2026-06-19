@@ -14,7 +14,6 @@ def run_llm_selection_streaming(
     the relevant ones. Formats the output to mimic the OT event stream.
     """
     
-    # 1. Format candidates for the LLM
     candidates_json = json.dumps(
         [{"id": s.id, "text": s.text} for s in sentence_records], 
         indent=2
@@ -32,7 +31,6 @@ def run_llm_selection_streaming(
     Output STRICT JSON containing a 'selected_ids' array with the IDs of the necessary sentences.
     """
     
-    # 2. Call OpenAI synchronously
     try:
         response = client.chat.completions.create(
             model="gpt-5.4-mini",
@@ -50,16 +48,13 @@ def run_llm_selection_streaming(
         print(f"LLM Retrieval failed: {e}")
         selected_ids = []
 
-    # 3. Map selected IDs back to actual records
     selected_records = [s for s in sentence_records if s.id in selected_ids]
     cumulative_tokens = 0
     total = max(len(selected_records), 1)
 
-    # 4. Stream fake events to the UI so the Context Log and Gauge still animate
     for step_idx, record in enumerate(selected_records):
         cumulative_tokens += len(record.text.split())
-        
-        # We fake the math metrics since LLMs don't have OT costs
+
         fake_coverage = round((step_idx + 1) / total, 4)
         fake_gain = round(1.0 / total, 4)
         
@@ -76,7 +71,6 @@ def run_llm_selection_streaming(
             "cumulative_tokens": cumulative_tokens,
         }
 
-    # 5. Yield Saturation
     yield {
         "event": "saturation_reached",
         "step": len(selected_records),

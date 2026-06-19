@@ -6,10 +6,10 @@ from datetime import datetime
 
 @dataclass
 class SentenceRecord:
-    id: str              # "{doc_index}_s{sentence_index}"
+    id: str 
     text: str
     source_doc: str
-    source_line: int     # sentence index within its document
+    source_line: int     
     embedding: torch.Tensor
 
 @dataclass
@@ -19,7 +19,6 @@ class Session:
     documents: List[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
 
-# Module-level store — fine for single-demo use
 _sessions: Dict[str, Session] = {}
 
 def create_session() -> Session:
