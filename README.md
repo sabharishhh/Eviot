@@ -98,7 +98,7 @@ Every retrieved sentence can be linked back to its original location in the sour
 
 - Python 3.11+
 - Node.js 20+
-- OpenAI API Key (optional if using a local Ollama deployment)
+- OpenAI API Key or Any Local Model
 
 ---
 
