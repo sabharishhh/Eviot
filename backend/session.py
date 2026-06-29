@@ -13,10 +13,20 @@ class SentenceRecord:
     embedding: torch.Tensor
 
 @dataclass
+class ConversationTurn:
+    turn_index: int
+    original_query: str
+    resolved_query: str
+    retrieved_sentence_ids: List[str]
+    answer: str
+    timestamp: datetime = field(default_factory=datetime.now)
+
+@dataclass
 class Session:
     session_id: str
     sentences: List[SentenceRecord] = field(default_factory=list)
     documents: List[str] = field(default_factory=list)
+    conversation: List[ConversationTurn] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
 
 _sessions: Dict[str, Session] = {}
@@ -39,3 +49,14 @@ def store_sentences(session_id: str, sentences: List[SentenceRecord]):
         s.embedding = s.embedding.cpu()
         
     _sessions[session_id].sentences = sentences
+
+def append_sentences(session_id: str, new_sentences: List[SentenceRecord]):
+    """
+    Append new sentences to an existing session.
+    """
+    for s in new_sentences:
+        s.embedding = s.embedding.cpu()
+    _sessions[session_id].sentences.extend(new_sentences)
+
+def append_turn(session_id: str, turn: ConversationTurn):
+    _sessions[session_id].conversation.append(turn)

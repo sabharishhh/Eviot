@@ -102,7 +102,7 @@ def extract_phrases(query: str, max_phrases: int = 10):
     keep = []
 
     for i, e in enumerate(embs):
-        if all(torch.cosine_similarity(e, embs[j], dim=0) < 0.9 for j in keep):
+        if all(torch.cosine_similarity(e, embs[j], dim=0).item < 0.9 for j in keep):
             keep.append(i)
 
     phrases = suppress_subphrases([filtered[i] for i in keep])

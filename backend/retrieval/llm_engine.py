@@ -3,8 +3,6 @@ from typing import Generator, List
 from session import SentenceRecord
 from openai import OpenAI
 
-client = OpenAI()
-
 def run_llm_selection_streaming(
     query: str, 
     sentence_records: List[SentenceRecord]
@@ -13,6 +11,7 @@ def run_llm_selection_streaming(
     Passes all candidate sentences to gpt-5.4-mini and asks it to select 
     the relevant ones. Formats the output to mimic the OT event stream.
     """
+    client = OpenAI()
     
     candidates_json = json.dumps(
         [{"id": s.id, "text": s.text} for s in sentence_records], 
