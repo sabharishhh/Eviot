@@ -28,7 +28,7 @@ def build_context_set_adaptive(
             break
 
         selected.append(best)
-        remaining.remove(best)
+        remaining[:] = [c for c in remaining if c is not best]
         cost_history.append(best_cost)
         prev_cost = best_cost
 

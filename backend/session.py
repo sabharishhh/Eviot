@@ -60,3 +60,37 @@ def append_sentences(session_id: str, new_sentences: List[SentenceRecord]):
 
 def append_turn(session_id: str, turn: ConversationTurn):
     _sessions[session_id].conversation.append(turn)
+
+def turn_to_sentence_records(turn: ConversationTurn, encoder) -> List[SentenceRecord]:
+    """
+    Convert a completed turn into retrievable SentenceRecords.
+    Splits into distinct Question and Answer records to prevent embedding dilution,
+    improving single-hop retrieval accuracy.
+    """
+    time_str = turn.timestamp.strftime('%Y-%m-%d %H:%M')
+    
+    # We explicitly prepend the timestamp to ground the facts in time
+    texts = [
+        f"[{time_str}] User asked: {turn.resolved_query}",
+        f"[{time_str}] Assistant answered: {turn.answer}"
+    ]
+    
+    # Encode both strings
+    embeddings = encoder.encode(texts)
+
+    return [
+        SentenceRecord(
+            id=f"turn{turn.turn_index}_q",
+            text=texts[0],
+            source_doc="conversation_history",
+            source_line=turn.turn_index,
+            embedding=embeddings[0].cpu()
+        ),
+        SentenceRecord(
+            id=f"turn{turn.turn_index}_a",
+            text=texts[1],
+            source_doc="conversation_history",
+            source_line=turn.turn_index,
+            embedding=embeddings[1].cpu()
+        )
+    ]

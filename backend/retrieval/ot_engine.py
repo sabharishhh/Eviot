@@ -51,64 +51,65 @@ def encode_query_plain(query: str, encoder) -> torch.Tensor:
 
 def encode_query_decomposed(query: str, encoder) -> tuple[list[str], torch.Tensor]:
     """
-    Advanced query decomposition using spaCy verb-spans and noun-chunks.
-    Preserves verbs and distinct semantic targets essential for multi-hop OT retrieval.
+    Fixed local spaCy decomposition. Retains individual distinct keywords 
+    alongside noun chunks to build a genuine multi-vector coverage footprint.
+    
+    Updated with a specificity filter to prune out generic single-word tokens.
     """
     from ingestion.chunker import get_nlp
     nlp = get_nlp()
     doc = nlp(query)
     
-    query_tokens = {t.text.lower() for t in doc if t.is_alpha}
     candidates = []
 
+    # 1. Grab noun chunks (e.g., "adoption agencies")
     for chunk in doc.noun_chunks:
-        if len(_content_words(chunk)) >= 2:
+        if len(_content_words(chunk)) >= 1:
             candidates.append(chunk.text)
 
+    # 2. Grab strong unique nouns/proper nouns independently
     for token in doc:
         if token.pos_ in {"NOUN", "PROPN"} and token.text.lower() not in _STOPWORDS:
             candidates.append(token.text)
 
+    # 3. Grab action verbs
     for token in doc:
-        if token.pos_ == "VERB":
-            span = doc[token.left_edge.i: token.right_edge.i + 1]
-            if len(_content_words(span)) >= 2:
-                candidates.append(span.text)
+        if token.pos_ == "VERB" and token.text.lower() not in _STOPWORDS:
+            candidates.append(token.text)
 
+    # Deduplicate string tokens while preserving insertion order
     seen = set()
-    unique_candidates = []
+    unique_phrases = []
     for c in candidates:
         norm_c = _normalize(c)
-        if norm_c not in seen:
+        if norm_c not in seen and len(norm_c) > 1:
             seen.add(norm_c)
-            unique_candidates.append(norm_c)
+            unique_phrases.append(norm_c)
 
-    filtered = []
-    for c in unique_candidates:
-        if _is_interrogative(c):
-            continue
-        overlap = len(set(c.split()) & query_tokens) / max(len(query_tokens), 1)
-        if overlap < 0.7:
-            filtered.append(c)
-
-    if not filtered:
-        filtered = [t.text.lower() for t in doc if t.is_alpha and t.text.lower() not in _STOPWORDS]
-        if not filtered:
-            filtered = [query]
-
-    embs = encoder.encode(filtered)
-    if embs.ndim == 1:
-        embs = embs.unsqueeze(0)
-        
-    embs_tensor = embs.cpu()
+    # Always seed with the full original query as the primary anchor
+    normalized_query = _normalize(query)
     
-    keep = []
-    for i, e in enumerate(embs_tensor):
-        if all(torch.cosine_similarity(e, embs_tensor[j], dim=0).item() < 0.9 for j in keep):
-            keep.append(i)
+    # --- STEP 6 FIX: SPECIFICITY FILTER ---
+    filtered_phrases = []
+    for phrase in unique_phrases:
+        # Avoid treating single-word generic terms as independent transport targets
+        words = phrase.split()
+        if len(words) == 1 and len(words[0]) < 9:
+            continue  # Drops 'identity' (8 chars), 'fields' (6 chars), etc.
+            
+        filtered_phrases.append(phrase)
+        
+    # Always ensure the full original query is seeded at index 0
+    if normalized_query in filtered_phrases:
+        filtered_phrases.remove(normalized_query)
+    filtered_phrases.insert(0, normalized_query)
+    
+    # Take the top 5 surviving specific sub-phrase anchors
+    phrases = filtered_phrases[:5] 
+    # --------------------------------------
 
-    phrases = _suppress_subphrases([filtered[i] for i in keep])
-    phrases = phrases[:8]
+    if not phrases:
+        phrases = [query]
 
     final_embs = encoder.encode(phrases)
     if final_embs.ndim == 1:
@@ -125,22 +126,40 @@ def run_ot_selection_streaming(
     """
     Generator that yields one event dict per selection step.
     The caller wraps this in an SSE response.
+    
+    Updated with Step 2 per-step OT diagnostics gated behind params.get("debug").
     """
+    # 1. Look up configuration variables
+    debug_mode = params.get("debug", False)
+    epsilon = params.get("epsilon", 0.01)
+    patience = params.get("patience", 2)
+    k_max = params.get("k_max", 12)
+    k_fixed = params.get("k", 5)
+
+    # 2. Extract embedded candidates
     candidates = [
         {"text": s.text, "emb": s.embedding, "_record": s}
         for s in sentence_records
     ]
 
-    initial_cost = ot_cost(query_embs, torch.stack([s.embedding for s in sentence_records]))
+    # Pre-calculate the overall query intent centroid if diagnostics are enabled
+    if debug_mode and query_embs is not None and query_embs.shape[0] > 0:
+        # query_embs shape: (num_phrases, embedding_dim)
+        query_centroid = query_embs.mean(dim=0, keepdim=True)
+        query_centroid_norm = query_centroid / query_centroid.norm(dim=-1, keepdim=True)
+    else:
+        query_centroid_norm = None
+
+    # Compute baseline distance mapping via our local OT distance module
+    # (Assuming ot_cost is available in the current file scope or via an active local import)
+    # If ot_cost expects torch tensors, convert the stack accordingly
+    all_embs = torch.stack([torch.tensor(s.embedding, dtype=torch.float32) for s in sentence_records])
+    initial_cost = ot_cost(query_embs, all_embs)
+    
     prev_cost = initial_cost
     selected_so_far = []
     remaining = candidates.copy()
     cumulative_tokens = 0
-
-    epsilon = params.get("epsilon", 0.01)
-    patience = params.get("patience", 2)
-    k_max = params.get("k_max", 12)
-    k_fixed = params.get("k", 5)
 
     no_gain_count = 0
     step = 0
@@ -148,9 +167,52 @@ def run_ot_selection_streaming(
     from eviot.selection.greedy import greedy_select
 
     while remaining and step < (k_fixed if mode == "fixed" else k_max):
+        # Determine the single best candidate for this optimization block
         best, best_cost = greedy_select(query_embs, selected_so_far, remaining)
         marginal_gain = prev_cost - best_cost
 
+        # 3. COMPUTE STEP 2 PER-STEP DIAGNOSTICS PRIOR TO MODIFIED ARRAY MUTATIONS
+        if debug_mode and query_centroid_norm is not None:
+            candidates_scores = []
+            
+            for item in remaining:
+                rec_obj: SentenceRecord = item["_record"]
+                
+                # Stack item vector and normalize
+                cand_tensor = torch.tensor(item["emb"], dtype=torch.float32).view(1, -1)
+                cand_norm = cand_tensor / cand_tensor.norm(dim=-1, keepdim=True)
+                
+                # Calculate cosine similarity directly against the central query anchor
+                cosine_to_centroid = torch.mm(cand_norm, query_centroid_norm.T).item()
+                
+                # Score potential step context using greedy_select logic
+                # We simulate this item's temporary selection to find its actual step ot_cost & marginal_gain
+                _, item_step_cost = greedy_select(query_embs, selected_so_far, [item])
+                item_marginal_gain = prev_cost - item_step_cost
+                
+                candidates_scores.append({
+                    "id": rec_obj.id,
+                    "ot_cost": round(float(item_step_cost), 4),
+                    "cosine_to_centroid": round(cosine_to_centroid, 4),
+                    "marginal_gain": round(float(item_marginal_gain), 4)
+                })
+            
+            # Sort full candidate checklist by highest step marginal gain to fetch the definitive top 5
+            candidates_scores.sort(key=lambda x: x["marginal_gain"], reverse=True)
+            top_5_diagnostics = [
+                (c["id"], c["ot_cost"], c["cosine_to_centroid"]) 
+                for c in candidates_scores[:5]
+            ]
+            
+            # Print explicit visibility trace directly to the backend logging standard out
+            print(
+                f"[OT_DEBUG] Step {step} | "
+                f"Top-5 Candidates: {top_5_diagnostics} | "
+                f"Selected: '{best['_record'].id}' | "
+                f"Marginal Gain: {round(float(marginal_gain), 4)}"
+            )
+
+        # 4. Standard production yield and state preservation
         coverage_pct = max(0.0, min(1.0, round(1.0 - best_cost, 4)))
         cumulative_tokens += len(best["text"].split())
 
@@ -171,7 +233,7 @@ def run_ot_selection_streaming(
         }
 
         selected_so_far.append(best)
-        remaining.remove(best)
+        remaining[:] = [c for c in remaining if c is not best]
         prev_cost = best_cost
 
         if mode == "fixed":

@@ -3,17 +3,24 @@ from typing import Generator
 
 def get_llm_answer(context_sentences: list[str], query: str, conversation: list = None) -> Generator[str, None, None]:
     """
-    Stream LLM answer tokens. Tries OpenAI first, falls back to Ollama.
+    Stream LLM answer tokens with separate boundaries for document facts
+    and literal conversation logs to prevent meta-history hallucinations.
     """
-    context_block = "\n".join(
-        f"[{i+1}] {s}" for i, s in enumerate(context_sentences)
-    )
+    # Build the document context block cleanly
+    context_block = "\n".join([f"[{idx+1}] {s}" for idx, s in enumerate(context_sentences)])
+    
     system_prompt = (
-        "You are a precise reasoning assistant. "
-        "Answer the question using ONLY the numbered context sentences provided. "
-        "Be aware of the conversation history to avoid unnecessary repetition. "
-        "If the context is insufficient to answer, state that clearly. "
-        "Be concise. Do not add information not present in the context."
+        "You are a precise reasoning assistant equipped with two sources of data:\n"
+        "1. DOCUMENT CONTEXT: Numbered lines extracted from knowledge documents.\n"
+        "2. CONVERSATION HISTORY: A chronological log of recent chat turns between you and the user.\n\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "- Answer factual questions about the topic using ONLY the numbered DOCUMENT CONTEXT lines.\n"
+        "- If the user asks you to summarize, list topics, or review what 'we have discussed/talked about so far in this chat', "
+        "rely strictly on the literal messages present in the CONVERSATION HISTORY log, NOT the text inside the DOCUMENT CONTEXT.\n"
+        "- Pay strict attention to timestamps, session numbers, or dates mentioned. Translate relative time expressions "
+        "(like 'yesterday' or 'last year') into exact dates based on surrounding timestamps.\n"
+        "- If both data sources are insufficient to answer, state that clearly.\n"
+        "- Be concise. Do not introduce outside knowledge or facts missing from the provided inputs."
     )
 
     from dotenv import load_dotenv
@@ -25,37 +32,42 @@ def get_llm_answer(context_sentences: list[str], query: str, conversation: list 
     else:
         yield from _ollama_stream(system_prompt, context_block, query, conversation)
 
-def _build_messages(system_prompt, context_block, query, conversation):
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    if conversation:
-        for turn in conversation[-10:]:  # last 4 turns for context
-            messages.append({"role": "user", "content": turn.original_query})
-            messages.append({"role": "assistant", "content": turn.answer})
-    
-    messages.append({
-        "role": "user",
-        "content": f"Context:\n{context_block}\n\nQuestion: {query}"
-    })
-    return messages
 
-def _openai_stream(system_prompt: str, context_block: str, query: str, api_key: str, conversation= None):
+def _openai_stream(system_prompt: str, context_block: str, query: str, api_key: str, conversation: list = None):
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
-    try:
-        messages = _build_messages(system_prompt, context_block, query, conversation)
-        stream = client.chat.completions.create(
-            model="gpt-5.4-mini",
-            messages=messages,
-            stream=True,
-            max_completion_tokens=512,
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta
-    except Exception as e:
-        yield f"[OpenAI Error — Answer generation unavailable: {e}]"
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    
+    # Process and append the FULL conversation log (no truncation)
+    if conversation:
+        for turn in conversation:
+            # Safely fetch fields matching the ConversationTurn attributes found in main.py
+            user_msg = getattr(turn, 'original_query', '')
+            asst_msg = getattr(turn, 'answer', '')
+            
+            if user_msg:
+                messages.append({"role": "user", "content": user_msg})
+            if asst_msg:
+                messages.append({"role": "assistant", "content": asst_msg})
+                
+    # Append the current active turn along with its retrieved Document Context
+    current_prompt = (
+        f"DOCUMENT CONTEXT:\n{context_block}\n\n"
+        f"USER QUESTION: {query}"
+    )
+    messages.append({"role": "user", "content": current_prompt})
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.0,
+        stream=True
+    )
+    
+    for chunk in response:
+        if chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
 
 def _ollama_stream(system_prompt: str, context_block: str, query: str, conversation=None):
     import requests, json

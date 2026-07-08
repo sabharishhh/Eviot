@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import torch
 import time
 import json
 import asyncio
@@ -15,7 +16,8 @@ from pydantic import BaseModel
 
 from session import (
     create_session, store_sentences, append_sentences,
-    get_session, SentenceRecord, ConversationTurn, append_turn
+    get_session, SentenceRecord, ConversationTurn, append_turn,
+    turn_to_sentence_records,
 )
 from ingestion.parser import parse_file
 from ingestion.chunker import chunk_into_sentences
@@ -68,7 +70,7 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     
     history_text = "\n".join(
         f"Q{t.turn_index}: {t.original_query}\nA{t.turn_index}: {t.answer[:300]}..."
-        for t in conversation[-3:]
+        for t in conversation[-8:]
     )
     
     try:
@@ -175,6 +177,7 @@ class QueryRequest(BaseModel):
     use_decomposition: bool = True
     retrieval_engine: str = "ot"  
     params: dict = {}
+    is_eval: bool = False
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
@@ -214,11 +217,20 @@ async def query_endpoint(req: QueryRequest):
                 if req.retrieval_engine == "llm":
                     event_stream = run_llm_selection_streaming(resolved_query, sentences)
                 else:
+                    # Merge default hyperparameters with incoming evaluation overrides
+                    runtime_params = {
+                        "epsilon": 0.01,
+                        "patience": 2,
+                        "k_max": 12,
+                    }
+                    if req.params:
+                        runtime_params.update(req.params)
+
                     event_stream = run_ot_selection_streaming(
                         query_embs=q_embs,
                         sentence_records=sentences,
                         mode=req.mode,
-                        params=req.params,
+                        params=runtime_params, # <-- Pass the merged dictionary here
                     )
  
                 for event in event_stream:
@@ -261,6 +273,9 @@ async def query_endpoint(req: QueryRequest):
                     answer=full_answer
                 )
                 append_turn(req.session_id, turn)
+                if not req.is_eval:
+                    turn_records = turn_to_sentence_records(turn, encoder)
+                    append_sentences(req.session_id, turn_records)
  
             yield make_sse_event("answer_complete", {
                 "answer": full_answer,
@@ -406,3 +421,34 @@ async def load_scenario(scenario_id: str):
         "documents": doc_summaries,
         "total_sentences": len(all_sentence_records)
     }
+
+class LocomoSentenceIn(BaseModel):
+    id: str
+    text: str
+    source_doc: str
+    source_line: int
+    embedding: List[float]
+
+class LocomoLoadRequest(BaseModel):
+    sentences: List[LocomoSentenceIn]
+
+@app.post("/eval/locomo/load")
+async def load_locomo_session(req: LocomoLoadRequest):
+    """
+    Eval-only endpoint: loads pre-embedded LoCoMo conversation turns into a
+    fresh session, bypassing /ingest and its chunker so dia_ids from the
+    LoCoMo annotations survive intact for evidence-recall scoring.
+    """
+    session = create_session()
+    records = [
+        SentenceRecord(
+            id=s.id,
+            text=s.text,
+            source_doc=s.source_doc,
+            source_line=s.source_line,
+            embedding=torch.tensor(s.embedding, dtype=torch.float32),
+        )
+        for s in req.sentences
+    ]
+    store_sentences(session.session_id, records)
+    return {"session_id": session.session_id, "total_sentences": len(records)}
