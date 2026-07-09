@@ -1,120 +1,198 @@
 "use client";
+
 import { useState, useRef, useCallback, useEffect } from "react";
-import { SessionState, ConversationTurn, SelectionStepEvent, QueryParams, AppMode } from "@/lib/types";
+import { SessionState, ConversationTurn, QueryParams } from "@/lib/types";
 import { ingestDocuments, getDemoScenarios, loadDemoScenario } from "@/lib/api";
 import {
-  Send, FileText, File, X, Zap, Brain, Activity, BookOpen,
-  Plus, RotateCcw, Loader2, AlertCircle, FilePlus, Image,
-  FileCode, FileSpreadsheet, Hash, ChevronDown, ChevronUp, Settings,
-  Menu, PanelLeftClose, PanelLeftOpen
+  ArrowUp,
+  FileText,
+  File,
+  X,
+  Activity,
+  BookOpen,
+  Plus,
+  RotateCcw,
+  Loader2,
+  FilePlus,
+  Hash,
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
-const MAX_TURNS = 10;
 const BASE = "http://localhost:8000";
 
-const DEFAULT_PARAMS: QueryParams = { epsilon: 0.01, patience: 2, k_max: 12, k: 5 };
+const DEFAULT_PARAMS: QueryParams = {
+  epsilon: 0.01,
+  patience: 2,
+  k_max: 12,
+  k: 5,
+};
 
 // ─── File type icon helper ───────────────────────────────────────────────────
-function DocIcon({ filename, size = 13 }: { filename: string; size?: number }) {
+
+function DocIcon({
+  filename,
+  size = 13,
+}: {
+  filename: string;
+  size?: number;
+}) {
   const ext = filename.split(".").pop()?.toLowerCase();
-  const cls = `shrink-0`;
-  if (ext === "pdf") return <FileText size={size} className={`${cls} text-red-400`} />;
-  if (ext === "docx" || ext === "doc") return <FileText size={size} className={`${cls} text-blue-400`} />;
-  if (ext === "md") return <Hash size={size} className={`${cls} text-purple-400`} />;
+  const cls = "shrink-0";
+
+  if (ext === "pdf") {
+    return <FileText size={size} className={`${cls} text-red-400`} />;
+  }
+
+  if (ext === "docx" || ext === "doc") {
+    return <FileText size={size} className={`${cls} text-blue-400`} />;
+  }
+
+  if (ext === "md") {
+    return <Hash size={size} className={`${cls} text-purple-400`} />;
+  }
+
   return <File size={size} className={`${cls} text-slate-400`} />;
 }
 
-// ─── Turn Card ──────────────────────────────────────────────────────────────
-// ─── Turn Card ──────────────────────────────────────────────────────────────
-function TurnCard({ turn, isLast }: { turn: ConversationTurn; isLast: boolean }) {
+// ─── Turn Card ───────────────────────────────────────────────────────────────
+
+function TurnCard({
+  turn,
+}: {
+  turn: ConversationTurn;
+  isLast: boolean;
+}) {
   const [selectedSource, setSelectedSource] = useState<number | null>(null);
 
   return (
-    <div className="flex flex-col gap-4 w-full animate-fade-in">
-
-      {/* User query pill — shown first, right-aligned */}
+    <div className="flex w-full flex-col gap-4 animate-fade-in">
+      {/* User query */}
       <div className="flex justify-end">
-        <div className="max-w-[80%] bg-gradient-to-r from-zinc-700 via-zinc-600 to-zinc-700 text-white rounded-2xl rounded-tr-none px-5 py-3 shadow-md animate-fade-in">
-          <p className="text-[15px] leading-relaxed font-sans">{turn.query}</p>
+        <div className="max-w-[80%] rounded-2xl rounded-tr-none bg-gradient-to-r from-zinc-100 via-white to-zinc-100 px-5 py-3 text-zinc-900 shadow-md animate-fade-in">
+          <p className="font-sans text-[15px] leading-relaxed">
+            {turn.query}
+          </p>
+
           {turn.resolvedQuery && turn.resolvedQuery !== turn.query && (
-            <p className="text-xs text-indigo-100/70 mt-1 italic font-sans">
+            <p className="mt-1 font-sans text-xs italic text-zinc-500">
               ↳ {turn.resolvedQuery}
             </p>
           )}
         </div>
       </div>
 
-      {/* Answer content (Claude style - direct on canvas with an AI avatar) */}
+      {/* Assistant response */}
       {(turn.answer || turn.isStreaming || turn.isRetrieving) && (
-        <div className="flex gap-4 items-start w-full">
-          {/* Assistant Avatar */}
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-400 to-zinc-200 flex items-center justify-center shadow-lg shrink-0 mt-1">
-            <Brain size={16} className="text-white animate-pulse" />
+        <div className="flex w-full items-start gap-4">
+          <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center">
+            <div className="eviot-blob" />
           </div>
 
-          {/* Response text & Citations */}
           <div className="flex-1 space-y-4">
             {turn.isRetrieving && turn.contextSteps.length === 0 ? (
-              <div className="flex items-center gap-2 text-xs text-text-secondary py-2">
-                <Loader2 size={12} className="text-accent animate-spin" />
-                <span>Retrieving context chunks using Optimal Transport...</span>
+              <div className="flex items-center gap-2 py-2 text-xs text-text-secondary">
+                <Loader2 size={12} className="animate-spin text-accent" />
+
+                <span>
+                  Retrieving context chunks using Optimal Transport...
+                </span>
               </div>
             ) : (
               <>
                 {turn.answer && (
-                  <p className="text-[15px] text-text-body leading-relaxed whitespace-pre-wrap font-sans">
+                  <p className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-zinc-100">
                     {turn.answer}
+
                     {turn.isStreaming && (
-                      <span className="inline-block w-1.5 h-4 ml-1 bg-accent animate-pulse align-middle" />
+                      <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-accent align-middle" />
                     )}
                   </p>
                 )}
 
-                {/* Sources section */}
                 {turn.contextSteps.length > 0 && (
-                  <div className="pt-3 border-t border-border-default/40 mt-2">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <BookOpen size={12} className="text-text-tertiary" />
-                      <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider">
+                  <div className="mt-2 border-t border-border-default/40 pt-3">
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <BookOpen
+                        size={12}
+                        className="text-text-tertiary"
+                      />
+
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary">
                         Retrieved Sources
                       </span>
                     </div>
+
                     <div className="flex flex-wrap gap-2">
                       {turn.contextSteps.map((step, idx) => {
-                        const docName = step.source_doc.split("/").pop() || step.source_doc;
-                        const shortName = docName.length > 20 ? docName.slice(0, 18) + "..." : docName;
+                        const docName =
+                          step.source_doc.split("/").pop() ||
+                          step.source_doc;
+
+                        const shortName =
+                          docName.length > 20
+                            ? `${docName.slice(0, 18)}...`
+                            : docName;
+
                         const isSelected = selectedSource === idx;
 
                         return (
                           <button
                             key={idx}
-                            onClick={() => setSelectedSource(isSelected ? null : idx)}
-                            className={`border text-[11px] rounded-md px-2.5 py-1 hover:border-accent hover:text-text-primary hover:bg-surface-3 transition-all cursor-pointer flex items-center gap-1.5 font-mono select-none ${isSelected
-                              ? 'bg-surface-2 border-accent text-text-primary'
-                              : 'bg-surface-2 border-border-default text-text-secondary'
-                              }`}
+                            onClick={() =>
+                              setSelectedSource(
+                                isSelected ? null : idx,
+                              )
+                            }
+                            className={`flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all hover:border-accent hover:bg-surface-3 hover:text-text-primary ${
+                              isSelected
+                                ? "border-accent bg-surface-2 text-text-primary"
+                                : "border-border-default bg-surface-2 text-text-secondary"
+                            }`}
                           >
-                            <span className="w-3.5 h-3.5 rounded-full bg-accent/15 text-accent text-[9px] flex items-center justify-center font-bold">
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
                               {idx + 1}
                             </span>
+
                             <span>{shortName}</span>
-                            <span className="text-text-tertiary">p.{step.source_line}</span>
+
+                            <span className="text-text-tertiary">
+                              p.{step.source_line}
+                            </span>
                           </button>
                         );
                       })}
                     </div>
 
-                    {/* Source context detail block */}
-                    {selectedSource !== null && turn.contextSteps[selectedSource] && (
-                      <div className="mt-3 p-3 rounded-lg bg-surface-2 border border-border-default text-xs text-text-body font-sans leading-relaxed animate-fade-in">
-                        <div className="flex items-center justify-between border-b border-border-default pb-1.5 mb-2 font-mono text-[10px] text-text-secondary">
-                          <span className="text-accent truncate">
-                            {turn.contextSteps[selectedSource].source_doc} (p. {turn.contextSteps[selectedSource].source_line})
-                          </span>
+                    {selectedSource !== null &&
+                      turn.contextSteps[selectedSource] && (
+                        <div className="mt-3 animate-fade-in rounded-lg border border-border-default bg-surface-2 p-3 font-sans text-xs leading-relaxed text-text-body">
+                          <div className="mb-2 flex items-center justify-between border-b border-border-default pb-1.5 font-mono text-[10px] text-text-secondary">
+                            <span className="truncate text-accent">
+                              {
+                                turn.contextSteps[selectedSource]
+                                  .source_doc
+                              }{" "}
+                              (p.{" "}
+                              {
+                                turn.contextSteps[selectedSource]
+                                  .source_line
+                              }
+                              )
+                            </span>
+                          </div>
+
+                          <p className="italic text-text-body">
+                            "
+                            {
+                              turn.contextSteps[selectedSource]
+                                .sentence_text
+                            }
+                            "
+                          </p>
                         </div>
-                        <p className="italic text-text-body">"{turn.contextSteps[selectedSource].sentence_text}"</p>
-                      </div>
-                    )}
+                      )}
                   </div>
                 )}
               </>
@@ -122,14 +200,17 @@ function TurnCard({ turn, isLast }: { turn: ConversationTurn; isLast: boolean })
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
+
 function Sidebar({
-  session, onSessionUpdate, onNewSession, isSidebarOpen
+  session,
+  onSessionUpdate,
+  onNewSession,
+  isSidebarOpen,
 }: {
   session: SessionState;
   onSessionUpdate: (s: SessionState) => void;
@@ -139,24 +220,36 @@ function Sidebar({
   const [isUploading, setIsUploading] = useState(false);
   const [scenarios, setScenarios] = useState<any[]>([]);
   const [loadingDemo, setLoadingDemo] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getDemoScenarios().then(r => setScenarios(r.scenarios)).catch(() => { });
+    getDemoScenarios()
+      .then((r) => setScenarios(r.scenarios))
+      .catch(() => {});
   }, []);
 
   const handleFiles = async (files: File[]) => {
-    if (!files.length) return;
+    if (!files.length || isUploading) return;
+
     setIsUploading(true);
+
     try {
-      const res = await ingestDocuments(files, session.sessionId);
+      const res = await ingestDocuments(
+        files,
+        session.sessionId,
+      );
+
       onSessionUpdate({
         sessionId: res.session_id,
-        documents: [...session.documents, ...res.documents],
+        documents: [
+          ...session.documents,
+          ...(res.documents || []),
+        ],
         totalSentences: res.total_sentences,
       });
     } catch (e) {
-      console.error(e);
+      console.error("Sidebar upload failed:", e);
       alert("Upload failed. Ensure the backend is running.");
     } finally {
       setIsUploading(false);
@@ -165,211 +258,289 @@ function Sidebar({
 
   const handleLoadDemo = async (sc: any) => {
     setLoadingDemo(true);
+
     try {
       const res = await loadDemoScenario(sc.id);
-      onSessionUpdate({ sessionId: res.session_id, documents: res.documents, totalSentences: res.total_sentences });
+
+      onSessionUpdate({
+        sessionId: res.session_id,
+        documents: res.documents,
+        totalSentences: res.total_sentences,
+      });
     } catch (e) {
-      console.error(e);
+      console.error("Demo loading failed:", e);
     } finally {
       setLoadingDemo(false);
     }
   };
 
   return (
-    <div className={`shrink-0 h-full flex flex-col bg-surface-1 border-r border-border-default transition-all duration-300 ${isSidebarOpen ? "w-56" : "w-14"}`}>
+    <aside
+      className={`flex h-full shrink-0 flex-col border-r border-white/[0.055] bg-[#1c1c1c] transition-[width] duration-200 ease-out ${
+        isSidebarOpen ? "w-[260px]" : "w-[56px]"
+      }`}
+    >
+      {/* Brand */}
+      <div
+        className={`flex h-[58px] shrink-0 items-center ${
+          isSidebarOpen
+            ? "justify-between px-3"
+            : "justify-center"
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <img
+            src="/favicon.ico"
+            alt="Eviot"
+            className="h-[26px] w-[26px] shrink-0 object-contain"
+          />
 
-      {/* Logo */}
-      {isSidebarOpen ? (
-        <div className="px-4 py-4 flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded bg-accent flex items-center justify-center shrink-0">
-            <div className="grid grid-cols-2 gap-0.5">
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} className="w-1 h-1 rounded-sm bg-[#0F0F0F]" />
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="font-bold text-base text-text-primary leading-none">Eviot</div>
-            <div className="text-[11px] text-text-secondary mt-0.5">Context That Works</div>
-          </div>
-        </div>
-      ) : (
-        <div className="py-4 flex justify-center">
-          <div className="w-6 h-6 rounded bg-accent flex items-center justify-center shrink-0" title="Eviot OT RAG">
-            <div className="grid grid-cols-2 gap-0.5">
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} className="w-1 h-1 rounded-sm bg-[#0F0F0F]" />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+          {isSidebarOpen && (
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[15px] font-semibold text-[#f2f2f2]">
+                Eviot
+              </div>
 
-      {/* New Session button */}
-      <div className="px-3 pb-4 flex justify-center w-full">
-        {isSidebarOpen ? (
-          <button
-            onClick={onNewSession}
-            className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-surface-0 text-sm font-semibold py-2.5 rounded-md transition-colors animate-fade-in"
-          >
-            <Plus size={13} />
-            New Session
-          </button>
-        ) : (
-          <button
-            onClick={onNewSession}
-            title="New Session"
-            className="w-8 h-8 flex items-center justify-center bg-accent hover:bg-accent-hover text-surface-0 rounded-full transition-colors"
-          >
-            <Plus size={14} />
-          </button>
-        )}
+              <div className="mt-0.5 truncate text-[11px] text-[#8e8e8e]">
+                Context That Works
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Documents section */}
-      <div className="px-3 pb-2 flex flex-col">
-        {isSidebarOpen ? (
-          <>
-            <p className="text-[10px] text-text-tertiary uppercase tracking-widest font-semibold mb-1.5 px-1">Documents</p>
-            <div className="flex flex-col">
-              {session.documents.length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-text-disabled italic">No documents loaded</div>
-              )}
-              {session.documents.map((doc, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-2 group transition-colors"
-                >
-                  <DocIcon filename={doc.filename} size={12} />
-                  <span className="text-xs text-text-body truncate flex-1" title={doc.filename}>
-                    {doc.filename.length > 18 ? doc.filename.slice(0, 16) + "…" : doc.filename}
-                  </span>
-                </div>
-              ))}
+      {/* New Session */}
+      <div
+        className={
+          isSidebarOpen
+            ? "px-2 pb-3 pt-3"
+            : "flex justify-center pb-3 pt-3"
+        }
+      >
+        <button
+          onClick={onNewSession}
+          title="New Session"
+          className={`group flex items-center text-[#ececec] transition-colors hover:bg-[#2a2a2a] ${
+            isSidebarOpen
+              ? "h-10 w-full gap-3 rounded-lg px-3"
+              : "h-10 w-10 justify-center rounded-lg"
+          }`}
+        >
+          <Plus
+            size={18}
+            strokeWidth={1.8}
+            className="shrink-0"
+          />
 
-              {/* Add Documents row */}
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-2 transition-colors text-left w-full mt-0.5"
-              >
-                {isUploading
-                  ? <Loader2 size={12} className="text-accent animate-spin shrink-0" />
-                  : <FilePlus size={12} className="text-text-secondary shrink-0" />
-                }
-                <span className="text-xs text-text-secondary">
-                  {isUploading ? "Encoding…" : "Add Documents"}
-                </span>
-              </button>
+          {isSidebarOpen && (
+            <span className="text-[14px] font-medium">
+              New Session
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Scrollable navigation */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-3 custom-scrollbar">
+        {/* Documents */}
+        <section className="mb-5">
+          {isSidebarOpen && (
+            <div className="mb-1 px-2">
+              <span className="text-[12px] font-semibold text-[#b4b4b4]">
+                Documents
+              </span>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2 items-center">
+          )}
+
+          <div className="flex flex-col gap-0.5">
+            {session.documents.length === 0 &&
+              isSidebarOpen && (
+                <div className="px-2 py-2 text-[13px] text-[#777777]">
+                  No documents loaded
+                </div>
+              )}
+
             {session.documents.map((doc, i) => (
-              <div key={i} className="p-1.5 rounded hover:bg-surface-2 transition-colors cursor-help" title={doc.filename}>
-                <DocIcon filename={doc.filename} size={14} />
+              <div
+                key={`${doc.filename}-${i}`}
+                title={doc.filename}
+                className={`group flex h-9 items-center text-[#d4d4d4] transition-colors hover:bg-[#242424] ${
+                  isSidebarOpen
+                    ? "gap-3 rounded-lg px-2"
+                    : "justify-center rounded-lg"
+                }`}
+              >
+                <DocIcon
+                  filename={doc.filename}
+                  size={16}
+                />
+
+                {isSidebarOpen && (
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {doc.filename}
+                  </span>
+                )}
               </div>
             ))}
+
             <button
               onClick={() => fileRef.current?.click()}
               disabled={isUploading}
               title="Add Documents"
-              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-2 transition-colors text-text-secondary"
+              className={`flex h-9 items-center text-[#b4b4b4] transition-colors hover:bg-[#242424] hover:text-[#ececec] disabled:opacity-50 ${
+                isSidebarOpen
+                  ? "gap-3 rounded-lg px-2"
+                  : "justify-center rounded-lg"
+              }`}
             >
-              {isUploading
-                ? <Loader2 size={14} className="text-accent animate-spin" />
-                : <FilePlus size={14} />
-              }
+              {isUploading ? (
+                <Loader2
+                  size={16}
+                  strokeWidth={1.8}
+                  className="shrink-0 animate-spin"
+                />
+              ) : (
+                <FilePlus
+                  size={16}
+                  strokeWidth={1.8}
+                  className="shrink-0"
+                />
+              )}
+
+              {isSidebarOpen && (
+                <span className="text-[13px]">
+                  {isUploading
+                    ? "Encoding…"
+                    : "Add Documents"}
+                </span>
+              )}
             </button>
           </div>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept=".pdf,.txt,.md,.docx"
-          className="hidden"
-          onChange={(e) => handleFiles(Array.from(e.target.files || []))}
-        />
-      </div>
 
-      <div className="mx-3 h-px bg-border-default my-2" />
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept=".pdf,.txt,.md,.docx"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(
+                e.target.files || [],
+              );
 
-      {/* Quick Start section */}
-      <div className="px-3 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
-        {isSidebarOpen ? (
-          <>
-            <p className="text-[10px] text-text-tertiary uppercase tracking-widest font-semibold mb-1.5 px-1">Quick Start</p>
-            <div className="flex flex-col">
-              {scenarios.map((sc) => (
-                <button
-                  key={sc.id}
-                  onClick={() => handleLoadDemo(sc)}
-                  disabled={loadingDemo}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-2 transition-colors text-left w-full group"
-                >
-                  <Activity size={12} className="text-text-secondary shrink-0 group-hover:text-accent transition-colors" />
-                  <span className="text-xs text-text-body group-hover:text-text-primary transition-colors truncate">
-                    {sc.title}
-                  </span>
-                </button>
-              ))}
+              void handleFiles(files);
+              e.target.value = "";
+            }}
+          />
+        </section>
+
+        {/* Quick Start */}
+        <section>
+          {isSidebarOpen && (
+            <div className="mb-1 px-2">
+              <span className="text-[12px] font-semibold text-[#b4b4b4]">
+                Quick Start
+              </span>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2 items-center">
+          )}
+
+          <div className="flex flex-col gap-0.5">
             {scenarios.map((sc) => (
               <button
                 key={sc.id}
                 onClick={() => handleLoadDemo(sc)}
                 disabled={loadingDemo}
                 title={sc.title}
-                className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-2 transition-colors text-text-secondary hover:text-accent"
+                className={`group flex h-9 items-center text-left text-[#d4d4d4] transition-colors hover:bg-[#242424] disabled:opacity-50 ${
+                  isSidebarOpen
+                    ? "gap-3 rounded-lg px-2"
+                    : "justify-center rounded-lg"
+                }`}
               >
-                <Activity size={14} />
+                <Activity
+                  size={16}
+                  strokeWidth={1.7}
+                  className="shrink-0 text-[#b4b4b4]"
+                />
+
+                {isSidebarOpen && (
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {sc.title}
+                  </span>
+                )}
               </button>
             ))}
           </div>
-        )}
+        </section>
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-3 border-t border-border-default flex justify-center w-full">
-        {isSidebarOpen ? (
-          <button className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-secondary transition-colors w-full text-left">
-            <Settings size={12} /> Settings
-          </button>
-        ) : (
-          <button title="Settings" className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors">
-            <Settings size={14} />
-          </button>
-        )}
+      {/* Settings */}
+      <div
+        className={
+          isSidebarOpen
+            ? "px-2 pb-2"
+            : "flex justify-center pb-2"
+        }
+      >
+        <button
+          title="Settings"
+          className={`flex h-10 items-center text-[#a7a7a7] transition-colors hover:bg-[#242424] hover:text-[#ececec] ${
+            isSidebarOpen
+              ? "w-full gap-3 rounded-lg px-3"
+              : "w-10 justify-center rounded-lg"
+          }`}
+        >
+          <Settings
+            size={17}
+            strokeWidth={1.7}
+            className="shrink-0"
+          />
+
+          {isSidebarOpen && (
+            <span className="text-[13px]">
+              Settings
+            </span>
+          )}
+        </button>
       </div>
-    </div>
+    </aside>
   );
 }
 
-// ─── Input Bar ────────────────────────────────────────────────────────────────
+// ─── Input Bar ───────────────────────────────────────────────────────────────
+
 function InputBar({
-  onSend, onFileAttach, disabled, placeholder, attachedFiles, onRemoveFile
+  onSend,
+  onFileAttach,
+  disabled,
+  placeholder,
+  attachedFiles,
 }: {
   onSend: (text: string) => void;
-  onFileAttach: (files: File[]) => void;
+  onFileAttach: (files: File[]) => void | Promise<void>;
   disabled: boolean;
   placeholder: string;
   attachedFiles: File[];
-  onRemoveFile: (i: number) => void;
 }) {
   const [text, setText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  /*
+   * Files upload immediately when selected.
+   * Therefore only actual prompt text should enable Send.
+   */
+  const canSend = text.trim().length > 0 && !disabled;
+
   const handleSend = () => {
-    if (!text.trim() && attachedFiles.length === 0) return;
+    if (!canSend) return;
+
     onSend(text.trim());
     setText("");
   };
 
-  const handleKey = (e: React.KeyboardEvent) => {
+  const handleKey = (
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -377,26 +548,49 @@ function InputBar({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Attached files preview */}
+    <div className="flex w-full flex-col gap-2">
+      {/* Files currently uploading */}
       {attachedFiles.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-1 animate-fade-in">
-          {attachedFiles.map((f, i) => (
-            <div key={i} className="flex items-center gap-1.5 bg-surface-2 border border-border-default rounded-lg px-2.5 py-1">
-              <DocIcon filename={f.name} size={11} />
-              <span className="text-xs text-text-body max-w-[120px] truncate">{f.name}</span>
-              <button onClick={() => onRemoveFile(i)} className="text-text-tertiary hover:text-text-primary ml-0.5 transition-colors">
-                <X size={10} />
-              </button>
+        <div className="mb-1 flex flex-wrap gap-1.5 animate-fade-in">
+          {attachedFiles.map((file, index) => (
+            <div
+              key={`${file.name}-${index}`}
+              className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#212121] px-2.5 py-1"
+            >
+              <Loader2
+                size={11}
+                className="animate-spin text-[#9b9b9b]"
+              />
+
+              <DocIcon
+                filename={file.name}
+                size={11}
+              />
+
+              <span className="max-w-[140px] truncate text-xs text-[#d4d4d4]">
+                {file.name}
+              </span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Input container pill */}
-      <div className={`flex flex-col bg-surface-1 border border-border-default rounded-2xl px-4 py-3 shadow-2xl transition-all duration-200 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30 ${disabled ? "opacity-50" : ""}`}>
-
-        {/* Hidden file input */}
+      {/* Composer */}
+      <div
+        className="
+          flex
+          min-h-[72px]
+          w-full
+          items-center
+          rounded-[36px]
+          bg-[#212121]
+          px-3
+          shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_6px_24px_rgba(0,0,0,0.18)]
+          transition-colors
+          duration-200
+          focus-within:bg-[#242424]
+        "
+      >
         <input
           ref={fileRef}
           type="file"
@@ -404,289 +598,443 @@ function InputBar({
           accept=".pdf,.txt,.md,.docx"
           className="hidden"
           onChange={(e) => {
-            onFileAttach(Array.from(e.target.files || []));
+            const files = Array.from(
+              e.target.files || [],
+            );
+
+            void onFileAttach(files);
             e.target.value = "";
           }}
         />
 
-        {/* Textarea + button row */}
-        <div className="flex items-end gap-2.5">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKey}
-            disabled={disabled}
-            placeholder={placeholder}
-            rows={1}
-            className="flex-1 bg-transparent text-[15px] text-text-body placeholder-text-disabled outline-none resize-none leading-relaxed max-h-36 overflow-y-auto custom-scrollbar disabled:opacity-50 py-1"
-            style={{ scrollbarWidth: "thin" }}
+        {/* Attachment button */}
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled}
+          title="Attach files"
+          className="
+            flex
+            h-11
+            w-11
+            shrink-0
+            items-center
+            justify-center
+            rounded-full
+            text-[#f2f2f2]
+            transition-colors
+            hover:bg-white/[0.08]
+            disabled:cursor-not-allowed
+            disabled:opacity-40
+          "
+        >
+          <Plus
+            size={28}
+            strokeWidth={1.6}
           />
+        </button>
 
-          <button
-            onClick={handleSend}
-            disabled={disabled || (!text.trim() && attachedFiles.length === 0)}
-            className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all mb-0.5 ${disabled || (!text.trim() && attachedFiles.length === 0)
-              ? "bg-surface-3 text-text-disabled"
-              : "bg-accent hover:bg-accent-hover text-surface-0 hover:scale-105"
-              }`}
-          >
-            <Send size={13} className="ml-0.5" />
-          </button>
-        </div>
+        {/* Prompt textarea */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKey}
+          disabled={disabled}
+          placeholder={placeholder}
+          rows={1}
+          className="
+            max-h-36
+            min-h-[28px]
+            flex-1
+            resize-none
+            overflow-y-auto
+            bg-transparent
+            px-2
+            py-1
+            text-[16px]
+            leading-7
+            text-[#f2f2f2]
+            outline-none
+            placeholder:text-[#9b9b9b]
+            disabled:cursor-not-allowed
+            custom-scrollbar
+          "
+          style={{
+            scrollbarWidth: "thin",
+          }}
+        />
+
+        {/* Send button */}
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          title="Send prompt"
+          className={`ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all duration-150 ${
+            canSend
+              ? "bg-white text-black hover:scale-[1.03] hover:bg-[#e8e8e8]"
+              : "bg-[#3a3a3a] text-[#777777]"
+          }`}
+        >
+          <ArrowUp
+            size={24}
+            strokeWidth={2.6}
+          />
+        </button>
       </div>
 
-      <p className="text-[11px] text-text-tertiary text-center">
-        Eviot can make mistakes. Please double-check responses.
+      <p className="text-center text-[11px] text-text-tertiary">
+        Eviot is AI and can make mistakes. Please double-check responses.
       </p>
     </div>
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Empty State ─────────────────────────────────────────────────────────────
+
 function EmptyState({
+  onSend,
+  onFileAttach,
+  disabled,
   hasSession,
-  onSelectScenario,
-  scenarios,
-  loadingDemo
+  attachedFiles,
 }: {
+  onSend: (text: string) => void;
+  onFileAttach: (files: File[]) => void | Promise<void>;
+  disabled: boolean;
   hasSession: boolean;
-  onSelectScenario: (sc: any) => void;
-  scenarios: any[];
-  loadingDemo: boolean;
+  attachedFiles: File[];
 }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto px-4 gap-8 select-none my-auto">
-      <div className="flex flex-col items-center text-center gap-3">
-        <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-zinc-400 to-zinc-200 flex items-center justify-center shadow-xl animate-pulse">
-          <Brain size={28} className="text-white" />
+    <div className="flex flex-1 items-center justify-center">
+      <div className="w-full max-w-4xl -translate-y-8 px-6">
+        <div className="mb-10 text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-100 md:text-4xl">
+            How can I help you today?
+          </h1>
+
+          <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-text-secondary">
+            Upload any document to get started, then ask questions about it
+            below.
+          </p>
         </div>
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-100 bg-clip-text text-transparent mt-2 pb-1">
-          How can I help you today?
-        </h1>
-        <p className="text-sm text-text-secondary max-w-md leading-relaxed mt-1">
-          {hasSession
-            ? "Ask a question below. Eviot will retrieve semantically relevant context from your documents using Optimal Transport."
-            : "Upload your documents in the sidebar to get started, then ask questions about them below."}
-        </p>
+
+        <InputBar
+          onSend={onSend}
+          onFileAttach={onFileAttach}
+          disabled={disabled}
+          placeholder={
+            disabled
+              ? "Uploading and encoding memory..."
+              : hasSession
+                ? "Ask about the retrieved documents..."
+                : "Upload memory to get started..."
+          }
+          attachedFiles={attachedFiles}
+        />
       </div>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ───────────────────────────────────────────────────────────────
+
 export default function Home() {
   const [session, setSession] = useState<SessionState>({
-    sessionId: null, documents: [], totalSentences: 0,
+    sessionId: null,
+    documents: [],
+    totalSentences: 0,
   });
+
   const [turns, setTurns] = useState<ConversationTurn[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [scenarios, setScenarios] = useState<any[]>([]);
-  const [loadingDemo, setLoadingDemo] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const turnsUsed = turns.filter(t => !t.isStreaming && !t.isRetrieving).length;
-
   useEffect(() => {
-    getDemoScenarios().then(r => setScenarios(r.scenarios)).catch(() => { });
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [turns]);
 
-  const handleSessionUpdate = useCallback((s: SessionState) => {
-    setSession(s);
-  }, []);
+  const handleSessionUpdate = useCallback(
+    (updatedSession: SessionState) => {
+      setSession(updatedSession);
+    },
+    [],
+  );
 
   const handleNewSession = useCallback(() => {
-    setSession({ sessionId: null, documents: [], totalSentences: 0 });
+    setSession({
+      sessionId: null,
+      documents: [],
+      totalSentences: 0,
+    });
+
     setTurns([]);
     setPendingFiles([]);
   }, []);
 
-  const handleSend = useCallback(async (query: string, overrideSessionId?: string) => {
-    if (isProcessing) return;
+  // ─── Immediate composer upload ─────────────────────────────────────────────
 
-    let currentSession = session;
-    const activeSessionId = overrideSessionId || session.sessionId;
+  const handleFileAttach = useCallback(
+    async (files: File[]) => {
+      if (!files.length || isProcessing) return;
 
-    if (pendingFiles.length > 0 || !activeSessionId) {
-      if (pendingFiles.length > 0) {
-        setIsProcessing(true);
-        try {
-          const filesToUpload = pendingFiles;
-          setPendingFiles([]);
+      setPendingFiles(files);
+      setIsProcessing(true);
 
-          const res = await ingestDocuments(
-            filesToUpload.length > 0 ? filesToUpload : [],
-            activeSessionId
-          );
+      try {
+        const res = await ingestDocuments(
+          files,
+          session.sessionId,
+        );
 
-          currentSession = {
-            sessionId: res.session_id,
-            documents: [...session.documents, ...(res.documents || [])],
-            totalSentences: res.total_sentences,
-          };
-          setSession(currentSession);
-        } catch (e) {
-          console.error("Ingest error", e);
-          setIsProcessing(false);
-          return;
-        }
-      } else {
+        setSession((prev) => ({
+          sessionId: res.session_id,
+          documents: [
+            ...prev.documents,
+            ...(res.documents || []),
+          ],
+          totalSentences: res.total_sentences,
+        }));
+      } catch (e) {
+        console.error("Composer upload failed:", e);
+        alert("Upload failed. Ensure the backend is running.");
+      } finally {
+        setPendingFiles([]);
+        setIsProcessing(false);
+      }
+    },
+    [session.sessionId, isProcessing],
+  );
+
+  // ─── Query handling ────────────────────────────────────────────────────────
+
+  const handleSend = useCallback(
+    async (
+      query: string,
+      overrideSessionId?: string,
+    ) => {
+      if (isProcessing || !query.trim()) return;
+
+      const finalSessionId =
+        overrideSessionId || session.sessionId;
+
+      if (!finalSessionId) {
         alert("Please upload a document first.");
         return;
       }
-    }
 
-    const finalSessionId = currentSession.sessionId || activeSessionId;
-    if (!finalSessionId) {
-      alert("Please upload a document first.");
-      setIsProcessing(false);
-      return;
-    }
+      const turnIndex = turns.length + 1;
 
-    if (!query) {
-      setIsProcessing(false);
-      return;
-    }
-
-    const turnIndex = turns.length + 1;
-
-    const newTurn: ConversationTurn = {
-      turnIndex,
-      query,
-      resolvedQuery: undefined,
-      contextSteps: [],
-      answer: "",
-      isStreaming: false,
-      isRetrieving: true,
-      coveragePct: 0,
-      totalTokens: 0,
-      docsUsed: [],
-    };
-    setTurns(prev => [...prev, newTurn]);
-    setIsProcessing(true);
-
-    try {
-      const response = await fetch(`${BASE}/query`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: finalSessionId,
-          query,
-          mode: "adaptive",
-          use_decomposition: true,
-          retrieval_engine: "ot",
-          params: DEFAULT_PARAMS,
-        }),
-      });
-
-      if (!response.body) throw new Error("No stream body");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-
-      while (!done) {
-        const { value, done: rd } = await reader.read();
-        done = rd;
-        if (!value) continue;
-
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (!raw) continue;
-
-          try {
-            const data = JSON.parse(raw);
-            const t = data.type || data.event;
-
-            if (t === "query_resolved") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1 ? { ...turn, resolvedQuery: data.resolved } : turn
-              ));
-            } else if (t === "selection_step") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1
-                  ? {
-                    ...turn,
-                    contextSteps: [...turn.contextSteps, data],
-                    coveragePct: data.coverage_pct,
-                    totalTokens: data.cumulative_tokens,
-                    docsUsed: turn.docsUsed.includes(data.source_doc) ? turn.docsUsed : [...turn.docsUsed, data.source_doc],
-                  }
-                  : turn
-              ));
-            } else if (t === "saturation_reached") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1
-                  ? { ...turn, isRetrieving: false, isStreaming: true }
-                  : turn
-              ));
-            } else if (t === "llm_token") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1
-                  ? { ...turn, isStreaming: true, answer: turn.answer + data.token }
-                  : turn
-              ));
-            } else if (t === "answer_complete") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1
-                  ? { ...turn, isStreaming: false, isRetrieving: false }
-                  : turn
-              ));
-            } else if (t === "stream_error") {
-              setTurns(prev => prev.map((turn, i) =>
-                i === prev.length - 1
-                  ? { ...turn, isStreaming: false, isRetrieving: false, answer: `Error: ${data.detail}` }
-                  : turn
-              ));
-            }
-          } catch { }
-        }
-      }
-    } catch (e: any) {
-      setTurns(prev => prev.map((turn, i) =>
-        i === prev.length - 1
-          ? { ...turn, isStreaming: false, isRetrieving: false, answer: `Connection error: ${e.message}` }
-          : turn
-      ));
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [session, turns, pendingFiles, isProcessing]);
-
-  const handleSelectScenario = async (sc: any) => {
-    setLoadingDemo(true);
-    try {
-      const res = await loadDemoScenario(sc.id);
-      const newSession = {
-        sessionId: res.session_id,
-        documents: res.documents,
-        totalSentences: res.total_sentences,
+      const newTurn: ConversationTurn = {
+        turnIndex,
+        query: query.trim(),
+        resolvedQuery: undefined,
+        contextSteps: [],
+        answer: "",
+        isStreaming: false,
+        isRetrieving: true,
+        coveragePct: 0,
+        totalTokens: 0,
+        docsUsed: [],
       };
-      setSession(newSession);
-      await handleSend(sc.query, res.session_id);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingDemo(false);
-    }
-  };
 
-  const handleFileAttach = useCallback((files: File[]) => {
-    setPendingFiles(prev => [...prev, ...files]);
-  }, []);
+      setTurns((prev) => [...prev, newTurn]);
+      setIsProcessing(true);
 
-  const inputPlaceholder = !session.sessionId
-    ? "Upload documents from the sidebar first…"
-    : "Ask about the retrieved documents...";
+      try {
+        const response = await fetch(`${BASE}/query`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            session_id: finalSessionId,
+            query: query.trim(),
+            mode: "adaptive",
+            use_decomposition: true,
+            retrieval_engine: "ot",
+            params: DEFAULT_PARAMS,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Request failed with status ${response.status}`,
+          );
+        }
+
+        if (!response.body) {
+          throw new Error("No stream body");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let buffer = "";
+        let done = false;
+
+        while (!done) {
+          const {
+            value,
+            done: readerDone,
+          } = await reader.read();
+
+          done = readerDone;
+
+          if (value) {
+            buffer += decoder.decode(value, {
+              stream: !readerDone,
+            });
+          }
+
+          const lines = buffer.split("\n");
+
+          /*
+           * Preserve the final incomplete SSE line for the next network chunk.
+           * The old implementation could silently lose JSON when one SSE
+           * event happened to be split across two chunks.
+           */
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+
+            const raw = line.slice(6).trim();
+
+            if (!raw) continue;
+
+            try {
+              const data = JSON.parse(raw);
+              const type = data.type || data.event;
+
+              if (type === "query_resolved") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          resolvedQuery: data.resolved,
+                        }
+                      : turn,
+                  ),
+                );
+              } else if (type === "selection_step") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          contextSteps: [
+                            ...turn.contextSteps,
+                            data,
+                          ],
+                          coveragePct: data.coverage_pct,
+                          totalTokens: data.cumulative_tokens,
+                          docsUsed: turn.docsUsed.includes(
+                            data.source_doc,
+                          )
+                            ? turn.docsUsed
+                            : [
+                                ...turn.docsUsed,
+                                data.source_doc,
+                              ],
+                        }
+                      : turn,
+                  ),
+                );
+              } else if (type === "saturation_reached") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          isRetrieving: false,
+                          isStreaming: true,
+                        }
+                      : turn,
+                  ),
+                );
+              } else if (type === "llm_token") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          isRetrieving: false,
+                          isStreaming: true,
+                          answer:
+                            turn.answer + (data.token || ""),
+                        }
+                      : turn,
+                  ),
+                );
+              } else if (type === "answer_complete") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          isStreaming: false,
+                          isRetrieving: false,
+                        }
+                      : turn,
+                  ),
+                );
+              } else if (type === "stream_error") {
+                setTurns((prev) =>
+                  prev.map((turn, i) =>
+                    i === prev.length - 1
+                      ? {
+                          ...turn,
+                          isStreaming: false,
+                          isRetrieving: false,
+                          answer: `Error: ${data.detail}`,
+                        }
+                      : turn,
+                  ),
+                );
+              }
+            } catch {
+              console.warn(
+                "Ignoring malformed SSE event:",
+                raw,
+              );
+            }
+          }
+        }
+      } catch (e: unknown) {
+        const message =
+          e instanceof Error
+            ? e.message
+            : "Unknown connection error";
+
+        setTurns((prev) =>
+          prev.map((turn, i) =>
+            i === prev.length - 1
+              ? {
+                  ...turn,
+                  isStreaming: false,
+                  isRetrieving: false,
+                  answer: `Connection error: ${message}`,
+                }
+              : turn,
+          ),
+        );
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [session.sessionId, turns.length, isProcessing],
+  );
+
+  const hasTurns = turns.length > 0;
 
   return (
-    <div className="h-screen w-screen bg-surface-0 text-text-body flex overflow-hidden font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-surface-0 font-sans text-text-body">
       <Sidebar
         session={session}
         onSessionUpdate={handleSessionUpdate}
@@ -694,67 +1042,89 @@ export default function Home() {
         isSidebarOpen={isSidebarOpen}
       />
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-
+      <div className="flex h-full flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <div className="h-12 shrink-0 border-b border-border-default flex items-center px-6 gap-3 bg-surface-1/80 backdrop-blur-sm">
+        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border-default bg-surface-1/80 px-6 backdrop-blur-sm">
           <button
-            onClick={() => setIsSidebarOpen(v => !v)}
-            title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors mr-1 shrink-0"
+            onClick={() =>
+              setIsSidebarOpen((value) => !value)
+            }
+            title={
+              isSidebarOpen
+                ? "Collapse sidebar"
+                : "Expand sidebar"
+            }
+            className="mr-1 shrink-0 rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
-            {isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+            {isSidebarOpen ? (
+              <PanelLeftClose size={16} />
+            ) : (
+              <PanelLeftOpen size={16} />
+            )}
           </button>
-          <span className="text-sm font-semibold text-text-primary">Chat</span>
+
+          <span className="text-sm font-semibold text-text-primary">
+            Chat
+          </span>
+
           <div className="h-4 w-px bg-border-strong" />
+
           <span className="text-xs text-text-secondary">
             {session.sessionId
               ? `${session.totalSentences} sentences in search space`
               : "No active session"}
           </span>
+
           <div className="flex-1" />
+
           <button
             onClick={handleNewSession}
             title="Reset session"
-            className="p-1.5 rounded hover:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors"
+            className="rounded p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
           >
             <RotateCcw size={14} />
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-6 flex flex-col">
-          {turns.length === 0 ? (
-            <EmptyState
-              hasSession={!!session.sessionId}
-              onSelectScenario={handleSelectScenario}
-              scenarios={scenarios}
-              loadingDemo={loadingDemo}
-            />
-          ) : (
-            <div className="max-w-2xl mx-auto flex flex-col gap-6 w-full">
-              {turns.map((turn, i) => (
-                <TurnCard key={turn.turnIndex} turn={turn} isLast={i === turns.length - 1} />
-              ))}
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
+        {!hasTurns ? (
+          <EmptyState
+            onSend={handleSend}
+            onFileAttach={handleFileAttach}
+            disabled={isProcessing}
+            hasSession={Boolean(session.sessionId)}
+            attachedFiles={pendingFiles}
+          />
+        ) : (
+          <>
+            {/* Messages */}
+            <div className="flex flex-1 flex-col overflow-y-auto px-8 py-6 custom-scrollbar">
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+                {turns.map((turn, i) => (
+                  <TurnCard
+                    key={turn.turnIndex}
+                    turn={turn}
+                    isLast={i === turns.length - 1}
+                  />
+                ))}
+              </div>
 
-        {/* Input area */}
-        <div className="shrink-0 px-8 pb-5 pt-3 border-t border-border-default bg-surface-0">
-          <div className="max-w-2xl mx-auto">
-            <InputBar
-              onSend={handleSend}
-              onFileAttach={handleFileAttach}
-              disabled={isProcessing || !session.sessionId}
-              placeholder={inputPlaceholder}
-              attachedFiles={pendingFiles}
-              onRemoveFile={(i) => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))}
-            />
-          </div>
-        </div>
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Bottom composer */}
+            <div className="shrink-0 bg-surface-0 px-8 pb-5 pt-3">
+              <div className="mx-auto w-full max-w-4xl">
+                <InputBar
+                  onSend={handleSend}
+                  onFileAttach={handleFileAttach}
+                  disabled={isProcessing}
+                  placeholder="Ask about the retrieved documents..."
+                  attachedFiles={pendingFiles}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

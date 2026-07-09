@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, FileText, CheckCircle, Loader2 } from "lucide-react";
+import { UploadCloud, FileText, Loader2 } from "lucide-react";
 import { ingestDocuments } from "@/lib/api";
 import { SessionState } from "@/lib/types";
 
@@ -35,36 +35,45 @@ export default function DocumentUpload({ session, onSessionUpdate }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div 
-        {...getRootProps()} 
-        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
-          ${isDragActive ? "border-indigo-500 bg-indigo-500/10" : "border-slate-700 hover:border-slate-500 bg-[#1a1d27]"}`}
+      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em]">
+        Knowledge Base
+      </label>
+
+      <div
+        {...getRootProps()}
+        className={`border border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all
+          ${isDragActive
+            ? "border-indigo-500/70 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
+            : "border-white/10 hover:border-white/25 bg-[#1A1E2B]"}`}
       >
         <input {...getInputProps()} />
         {isUploading ? (
           <div className="flex flex-col items-center gap-2 text-slate-400">
-            <Loader2 className="animate-spin text-indigo-400" size={28} />
-            <span className="text-sm">Encoding documents...</span>
+            <Loader2 className="animate-spin text-indigo-400" size={26} />
+            <span className="text-sm">Encoding documents…</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2 text-slate-400">
-            <UploadCloud size={28} className="text-slate-500" />
-            <span className="text-sm">Drag & drop PDFs, TXT, DOCX</span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-widest">or click to browse</span>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/15 flex items-center justify-center">
+              <UploadCloud size={19} className="text-indigo-400" />
+            </div>
+            <span className="text-sm text-slate-300">Drag &amp; drop PDFs, TXT, DOCX</span>
+            <span className="text-[10px] text-slate-600 uppercase tracking-[0.18em]">or click to browse</span>
           </div>
         )}
       </div>
 
+      {/* Loaded state — status pill styled like the reference's green "On" badges */}
       {session.documents.length > 0 && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
-            <CheckCircle size={14} /> Memory Loaded
-          </div>
-          <div className="flex justify-between items-center text-xs text-emerald-100/70">
-            <span className="truncate flex items-center gap-1">
-              <FileText size={12} /> {session.documents.length} File(s)
-            </span>
-          </div>
+        <div className="bg-[#1A1E2B] border border-white/5 rounded-2xl px-4 py-3 flex items-center justify-between">
+          <span className="flex items-center gap-2 text-xs text-slate-300 truncate">
+            <FileText size={13} className="text-slate-500 shrink-0" />
+            {session.documents.length} file{session.documents.length > 1 ? "s" : ""} · {session.totalSentences} sentences
+          </span>
+          <span className="shrink-0 ml-3 px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            Loaded
+          </span>
         </div>
       )}
     </div>
