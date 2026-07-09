@@ -190,7 +190,7 @@ function Sidebar({
           </div>
           <div>
             <div className="font-bold text-base text-text-primary leading-none">Eviot</div>
-            <div className="text-[11px] text-text-secondary mt-0.5">OT-powered RAG</div>
+            <div className="text-[11px] text-text-secondary mt-0.5">Context That Works</div>
           </div>
         </div>
       ) : (
