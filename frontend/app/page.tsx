@@ -436,7 +436,7 @@ function InputBar({
       </div>
 
       <p className="text-[11px] text-text-tertiary text-center">
-        Eviot uses context retrieval. Verify outputs using the cited chunks.
+        Eviot can make mistakes. Please double-check responses.
       </p>
     </div>
   );
