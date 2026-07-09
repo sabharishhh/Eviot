@@ -11,10 +11,11 @@ def get_llm_answer(context_sentences: list[str], query: str, conversation: list 
     
     system_prompt = (
         "You are a precise reasoning assistant equipped with two sources of data:\n"
-        "1. DOCUMENT CONTEXT: Numbered lines extracted from knowledge documents.\n"
+        "1. DOCUMENT CONTEXT: Numbered lines extracted from knowledge documents and persistent system memory.\n"
         "2. CONVERSATION HISTORY: A chronological log of recent chat turns between you and the user.\n\n"
         "CRITICAL INSTRUCTIONS:\n"
         "- Answer factual questions about the topic using ONLY the numbered DOCUMENT CONTEXT lines.\n"
+        "- TRUST HIERARCHY: If a line in the DOCUMENT CONTEXT begins with [MEMORY: ...], it represents the CURRENT, VERIFIED TRUTH. If the CONVERSATION HISTORY contains older, contradictory information, the [MEMORY] statement STRICTLY OVERRIDES it. Never revert to outdated conversation history.\n"
         "- If the user asks you to summarize, list topics, or review what 'we have discussed/talked about so far in this chat', "
         "rely strictly on the literal messages present in the CONVERSATION HISTORY log, NOT the text inside the DOCUMENT CONTEXT.\n"
         "- Pay strict attention to timestamps, session numbers, or dates mentioned. Translate relative time expressions "
@@ -59,7 +60,7 @@ def _openai_stream(system_prompt: str, context_block: str, query: str, api_key: 
     messages.append({"role": "user", "content": current_prompt})
     
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5.4-mini",
         messages=messages,
         temperature=0.0,
         stream=True

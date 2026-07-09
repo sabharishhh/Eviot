@@ -1,0 +1,3495 @@
+Yeah.
+>> Okay.
+So, we are live on YouTube.
+So uh we will be uh first calling the
+team uh team ID
+277 IIIA0277
+Fusion X deep fake image detection with
+GPU accelerated distributed learning. So
+uh we can admit that
+Hi team. Uh
+good morning.
+Uh
+just
+I guess
+yes. There's a echo coming in.
+So before we start uh giving you a idea
+we'll be like already communicated you
+will be having 12 minutes to present uh
+the project. A warning will be given to
+you at 10 minutes. Uh there will be a
+chat
+saying that 2 minutes are remaining.
+Please try to wrap it up in 10 12
+minutes. After that uh the Q&A session
+will be open to the jury. We have work
+history and head of technology services
+at USG and Sadesh Babu co-founder and
+past president of INAP joining here as
+the jury members. So uh if you are all
+set to go start yes uh you can yeah
+please you can start the presentation.
+You can go ahead. Thank you. All the
+best.
+>> Yes. Thank you. So good morning to the
+jury and myself Wunatki this is Duresh
+Sona and Adish Pawar is also here and uh
+we yes Adish has started the PPD.
+So I I would first like to uh tell tell
+that what is the significance of deep
+fakes. Next slide.
+So defects are uh AI generated material
+and uh those those images
+uh there's an audio coming
+so AI generated images are deep fakes
+and as we can see here that uh slide
+slide the the deep fakes uh incidents
+have increased at a remarkable rate
+since 2023 and there are several
+incidents like the recent One was that
+the Bangaluru residents duped off rupees
+95 lakhs by deep fake videos of Naran
+Morty and Mkesh Shambani and various
+celebrities have also become the victims
+of deep fakes that their deep fake
+videos have been circulated on social
+medias like Instagram, Facebooks and
+various kind of incidents are increasing
+day by day. So the motivation behind
+this fusion X was that uh to uh to
+overcome the challenge of deep fake and
+build a model that can detect deep fakes
+efficiently as well as it it has a less
+memory overhead. So efficiency as well
+as accuracy we kept in mind. Next slide
+please. So what is the innovation behind
+Fusion X? Why Fusion X is different?
+Next slide.
+So, Fusion X is a customuilt hybrid deep
+learning model. We are combining uh the
+CNN that is convolutional neural
+networks and the vision transformer into
+this. And uh the main thing is that it
+helps us to identify both pixel level
+and semantic level manipulations. So, uh
+it is designed mainly for precision,
+adaptability and real world readiness.
+Uh next slide. So, now let's dive uh
+deep into fusion x model architecture.
+Huh? So this is what I was talking
+about. This is a model architecture. The
+as I said previously that we have
+combined the CNN and uh the vision
+transformer blocks. So uh the S0 stage
+and the S1 stage consists of the
+convolutional blocks. S0 stage has a
+simple convolutional 3x3 blocks and it
+it has a stride of two so that we can
+capture all the uh local so that we can
+capture all the pixel level or or the
+local level features of the images and
+after that we are moving that data to
+the S1 bottleneck architecture which can
+be repeated L1 times. So our models uh
+another feature is that it can be
+generalized also the model uh layer that
+the models layer that is the S1 layer we
+can repeat it to increase the capture of
+local features as many times as we want.
+Okay. So in S1 we have the convolutional
+one by one block then depth wise
+convolution and then again convolutional
+block and uh to prevent the feature loss
+that is happening like only we are
+capturing the local features. So to uh
+to reduce the feature loss that is
+happening and to uh also capture the
+other features we have also included a
+skip connection from the uh the first
+block to the output of the second block
+that you can see the arrow combining
+that and after the two blocks initial
+two blocks we come to the S2 that is the
+transformer block which also can be
+repeated L2 times. So it has multi head
+attention basically it has three heads
+and then the simple addition uh
+normalization layer and the feed forward
+layer and the again normalization layer
+and it comes uh comes to the output. So
+our problem is like the basic binary
+classification problem is it real or is
+it deep fake. So transformer layer
+transformer encoder layers and the multi
+head attention layers it helps to
+capture all the global features as well.
+So this by this we can capture all kind
+of defect features that that can that an
+image can include. Next slide please.
+Okay. So now I would like to hand over
+to Adish Paw. He'll be carrying Dur
+Sonar. He'll be carrying for
+no worries myself. So I will be
+explaining mostly the training part of
+the uh upper system and uh the uh back
+end and front end part which I will give
+a short demo on it. So first part is
+pytor distributed training. So what we
+have used for training our model is we
+have we had made a cluster of six GPUs
+in our college where we trained our
+model. So we implemented uh that using
+PyTorch. In PyTorch we use a
+torch.istributed
+uh
+uh so we use torch distributed package.
+Uh it was used for uh mainly
+communication between the GPUs. So eGPU
+uh had one processor. Uh we can say it
+as a node and we used NCCL for the
+communication back end. So it uh made
+use of Ethernet to communicate with each
+of the processor and share the data
+whichever
+for the training purpose. Uh the
+connection workflow is also given. Uh we
+assign ranks and GPUs exchange gradients
+and parameters within themselves. Next
+slide. Uh for then there are two uh
+methods which we implemented. Uh the
+first one was FSGP that is fully sharded
+data parallel. What this does is as you
+can see in the image we uh
+whatever model we had we sharded its
+parameters into multiple processors. So
+each uh processor used to uh use its uh
+sharded model structure or parameters
+and train on the uh same data uh let's
+say there's 10 GB data. So each model
+used to train on the 10 GB data but
+using the some partial parameters. So
+the advantage and limitations are also
+given that uh it was had low memory
+usage and scales up to billions of
+parameters. The model if it is large
+then we can use this method.
+>> Can you uh take the next slide?
+>> Yep. So uh the next part we used was GDP
+distributed data parallel which we have
+currently used in our uh system now
+because our model is not that big uh
+compared to what whatever Google and
+large scale LLM are doing. So we use DDP
+uh in our current system and uh what it
+simply does is whatever data set you
+have let's say we have a 10 GB data set.
+So it it the data set is sharded into
+multiple processors. So each processor
+will get around 2 GB we can say 2GB 2 GB
+2GB like this every processor gets a uh
+data set partial data set and the
+advantages of it are simple it is simple
+and it has high throughput the
+limitations are high memory usage and
+not efficient for extremely large models
+next slide. Okay. So the this is short
+uh info about our back end. Uh we have
+the back end routes and features. So
+whatever what we have done is uh we in
+our backend system we have uh used four
+routes. First one is image detection
+which is the main route where uh uh the
+user can send a single image for the
+image detection and also our plug-in
+uses this route to send those images and
+those are detected. Uh then we have used
+a get model which will uh fetch the
+model which user is using like we have
+two models in our current system. One we
+have name named as 1.0 and the second
+one is 1.5. The 1.5 one is the beta one.
+So uh this routable data which the user
+has subset. Then we have a subscribe
+route so that user can subscribe to a
+better model and the authentication for
+login and uh sign in purpose. So there
+are also uh we have added secure
+authentication using JWT uh there are
+tokens for login then user data
+management uh and uh we have used fast
+API so I will just uh give a short uh
+demo I will share my screen
+is sharing the screen will show you the
+demo is my screen visible
+Yes. Yes.
+>> Uh so this is our uh login page where I
+will just uh login.
+Currently our server is on uh local
+system. We haven't deployed it anywhere.
+Uh so we can see the model using 1.5. So
+I had subscribed to this model that is
+why I'm using uh 1.5.
+We can always uh switch to uh if any uh
+new user comes he can always switch and
+uh
+subscribe to a new models.
+So this image shows the confidence score
+as 69% and it is real. I will uh show
+the plug-in feature. So
+I have loaded the plug-in in our uh in
+the in this browser. I'll just switch
+this to on. And if I search anything,
+let's say that
+any image.
+So it will take some time and show us
+that uh is the image real or fake.
+As you can see this is my profile and it
+is showing green right now. So this
+image is real. Uh this image is showing
+the green border. So it is real. This is
+fake and this is fake. Now also you can
+see the images are processing it. More
+minutes remaining.
+So I will shake hello to Aisha. Thank
+you.
+Okay. Uh hello everyone. My name is
+Aishwar. Now from uh we have uh came to
+know about like core engine of our whole
+system. Then from core engine to real
+life deployment. Our defect detection
+system has a started with a core engine
+called a train deep learning model
+capable of a distinguish between the
+authenticate and manipulated images. But
+building a model is not isn't enough. So
+deployment in word requires a scaling
+scalability and reliability. That's why
+we design a high level system design. As
+you can see in the uh uh diagram, this
+is the HID of our system having a
+multiple component like GPU cluster,
+load inf load balancer, API gateway,
+caching and database. Mainly GPU cluster
+is required for evaluation. When the
+inference is created, there are multiple
+crowd here and for that evolution, we
+need a GPU cluster on server side when
+inference is created and a load balancer
+to manage the whole talk. Then we will
+move forward with the real life
+scenario. There are mainly two scenario
+I have mentioned here. The first one is
+a computer exam registration portal for
+the ID verification and second is the
+social media application for content
+moderation and user preference. The why
+the defect model will play a role here.
+Like imagine a student registering for a
+high-stake exam like a NET. When they
+upload their image ID, it automatically
+send to a detection API which uh if the
+model verifies the it is verified or
+authenticated images then register
+proceed smoothly. Uh registration
+process will be proceed smoothly. And if
+the image is flagged as a defect, the
+system alerts the student with a popup
+like your image is fake. So reupload
+that images image. This prevents a
+misuse of fake ids and ensures a
+fairness in exam registration. After
+then moving forward to the social media
+application. Nowadays the content
+moderation and user preference is more
+important than privacy.
+when having a multiple fake images in
+our feed is not uh unlike to uh
+everyone. So uh now consider a social
+media app. A user often uh see a
+manipulated and misleading content with
+our system integration. If user enables
+the option of hide fake images, the
+fusion scans the post in a real time.
+Authentic authenticate the image are
+displayed normally with the verified by
+fusion AI tag. If defect and manipulate
+images are blurred with warning. If the
+we found a defect images, it is blurred
+with the warning that the this image is
+flagged as a possible defect. So you
+can't do that if anyone if user have we
+have provided user with the full control
+that they can choose the if anyway
+option like I want to see that image so
+he can he or she can then this allows
+platforms to maintain a trust with a
+respecting user preference.
+Uh so for as you can see there are two
+architecture images so this can be our
+real life use case. Then moving forward
+uh so from core AI uh so from core AI
+research to scalable deployment our
+fusionic system demonstrate how the
+defect detection can directly integrate
+into real life application or real life
+scenario from exam registration portal
+to the social media feeds solving real
+life for problems at scale. So that's
+all about from our side. This is our
+defect detection system for a scalable
+uh solution for the real life problem.
+So thank you so much.
+>> Thank you team. Thank you. Thank you for
+the presentation. Uh over to the judges
+for Q&A.
+>> Yeah. Thanks Maris. Please go ahead.
+>> Yeah. uh for training purposes you said
+your size of the model uh that you used
+was 10 GB
+>> uh like I g I just gave an example for a
+data set but the uh actual data set was
+>> actual data set was varying because
+since this was an R&D uh R&D project we
+were experimenting with various kinds of
+data sets and then we finalized a data
+set of AI generated images which was of
+a size about 4 or 4.5 GBs and the images
+were of size of 256 256 resolution. So
+then we need not waste our computational
+power for resizing those images. We
+directly fetch those images into the
+required resolution there.
+>> And how much was what was the number of
+uh uh fake deep fakes versus real
+pictures and that?
+>> Uh oh. to the ratio it was it was like
+70 75,000 images for real and 70,000 for
+deep fake and then we divided that into
+the train test and validation uh sets
+for training purposes.
+>> So you use the same u model meaning set
+of data for the validation as well.
+>> Sorry sir I didn't get your question.
+>> Did you use the same set for validation
+or did you choose a completely different
+set for validation? Uh no sir we did
+choose
+of the same data set we created a
+different set sub of the validation so
+we did that yes
+>> and how different were the images were
+they all people of the same category
+were they different and so on
+>> well they were a mix so what we tried to
+include first we had only a data set of
+deep fix deep fix data set so it only
+included the faces and the faces were
+off. But then uh the problem of
+generalization was there. So we shifted
+to the new data set which I mentioned
+before the 4GB1 and it included almost
+all kinds of images that were AI
+generated uh edited with AI in the deep
+fix part and the real part included all
+the real life images of cats of animals
+of dogs of of humans and of even
+landscape. So I wanted to we wanted to
+generalize our model more so that it can
+detect any AI generated image too. So
+for that we uh did that this
+>> okay Satish.
+>> Yeah thanks for your presentation. Uh my
+name is Satish. Uh first of all uh how
+do you define deep fake?
+So defects are the images which have
+been edited semantically. They are pixel
+values have been edited. So the values
+the images which have been morphed with
+some other layer that can be a deep
+fake. A completely AI generated image is
+also a deep fake. And uh some images
+where only the face the complete face
+and the facial features with the pixel
+values of the image have been changed or
+have been manipulated with are can be
+called as deep fix.
+>> Uh what do you mean by pixel value?
+Pixel values means the RGB values the
+red, green and blue values because uh
+since we have to look for the the
+pattern in the pixel because AI
+generated images have a pattern in those
+RGB values and the real life images have
+a different pattern. So that can be the
+binary classification problem here. And
+by converting an image to the tensor, a
+2D or 3D tensor, we can compare that
+values with the uh real life images. And
+by that we can distinguish between a
+real and a deep fake image.
+>> Uh so the the strategy generally is that
+you are training the model first with
+the real images and then you're trying
+a deep fake and it will report a deep
+fake. Is that the general principle?
+>> Uh yes sir. We are providing the sets of
+the real as well as
+the real as well as those defects to the
+model for training purposes and then
+after that the model when given an input
+for testing it will give a output that
+is it a defect or a real one.
+So now generally there are two
+approaches. One is that you are looking
+for the the
+uh how true the face is. Uh the other is
+whether there are any artifacts arising
+out of synthetic creation of an image.
+Uh now when AI creates an image, it
+leaves artifacts which are some
+patterns. Now if you're looking for that
+approach, then you don't need any other
+thing. You can straight away look at the
+image alone in isolation and see whether
+it carries the artifacts that a typical
+AI generation has.
+>> Yes.
+>> And if it has it then you can say this
+is a deep fake. The other is to compare
+with a real image. But the problem with
+the real image is that you need a lot of
+photographs of a real person. uh if it's
+a new person, if it's a new film actor,
+actress, you may not have all that. So
+how do you compare these approaches?
+So the the approach which you explained
+the last that is the real images that
+approach we had uh taken for because
+since defects the images are edited to
+the very basic layer. The first approach
+were the artifact approach which you
+mentioned in that the naked human eye
+can distinguish between the AI generated
+image and the real life image but the
+deep fakes many times we cannot
+distinguish between a deep fake image
+and a real life image. So due to that we
+we wanted to evaluate the image at the
+very basic level and then under make the
+model understand that is this image deep
+fake and this image is the real one. So
+this is why we took the second approach.
+>> Uh but then you don't need to look at
+using the real eye human eye. The whole
+reason why the computer is used is to
+look at things that the human eye cannot
+see. So why do you then fall back onto
+the human eye methodology?
+>> So the human eye again like the human
+eye methodology many times like a defect
+video of any celebrity a person cannot
+distinguish that. So the the computer
+itself it will classify those things
+into the defect and the real one. And
+since
+>> I think we're running out of time. So
+one last question.
+>> Okay.
+>> Suppose you take an image of President
+Trump and you flip it left to right.
+>> Yes.
+>> And uh what does your system say? If you
+give this
+>> it will it will it will give the real
+value like whatever the value is the the
+the classification uh category will not
+be affected because since we are dealing
+with the pixel values unless and until a
+pixel
+>> the pixel values change. No then you
+flip it. But the pattern sir, the
+pattern matters.
+>> What are you then comparing? What is
+this? The pixel values that you're
+talking about. What is the grid
+of pixels?
+>> The grid pixel the grid of pixels
+contains the red, green, and blue
+values. So every every AI generated
+>> what size?
+>> Uh 256
+initial.
+>> Uh but that's a very small stamped size
+kind of portion, isn't it? 256. These
+days images are at least 248 or no 1024
+at least.
+>> Yeah. Yes sir. But but due to the uh
+hardware constraints we were not able to
+include the larger image sizes because
+that was the main purpose behind using
+the node cluster because our college
+didn't have any uh powerful GPU to
+single-handedly train that and even the
+online services like Google Collab and
+Kaggle hugging face they did give us the
+free time of only 30 hours per week. So
+we couldn't rely on that. So we wanted
+to take the things into our own hands so
+that we uh so then we approach uh we
+took this approach of distributed
+training and we created this cluster. So
+that's
+>> that's okay. So thanks Bis. Any
+followup?
+>> Yeah just one followup. You talked about
+the at scale. Uh so how at scale are you
+looking at a cloud-based deployment? Can
+I go back to that architecture?
+>> Yes. Yes.
+>> Um
+>> yes.
+>> Okay. and uh uh how how do you plan to
+deploy it at scale?
+>> So uh currently we try to deploy uh
+deploy it on a free uh services like uh
+Warsel and we also tried for AWS but uh
+currently it needs uh larger uh larger
+RAM servers because uh for our plugins
+it we have to fetch multiple images and
+send multiple images to the server. When
+we s for evolution in other on other
+hand we have model architecture on other
+hand we have the images input or we can
+say that for comparing this we need a
+kind of evolution power to classify
+between the real and defect for that to
+handle the whole huge cloud and the huge
+image data so we need on server side or
+deployment side we need a kind of GPU
+cluster so
+>> I agree I agree right I am not asking I
+didn't ask you whether you deployed it
+or not. I'm just saying from an
+architecture perspective. I don't see a
+whole lot of uh cloud native elements
+here. So that's why I was just checking
+did you look at what cloudnative
+architectures look like uh for uh you
+know large scale scalable deployments
+because this doesn't look at so that's
+why I used checking if you used for
+example AWS as a well architected
+framework for deployments and things
+like that uh did you use any of those
+versus
+>> our model is trained on Python distrib
+distributed cluster then we came across
+a concept like a Python serving or
+TensorFlow serving, we can use that kind
+of services to serve our model. Mainly
+there are many cloud platforms like AWS
+as you have mentioned. We can use uh
+instance for that matter.
+>> Okay. Thank you.
+>> Thank you sir.
+>> Thanks uh Arvin. Back to you.
+>> Thank you judges. Thank you team. Uh
+thank you for your presentations and
+thank you judges for your questions. uh
+team you can uh leave the meeting.
+>> Okay.
+>> Okay. Thank you. Thank you.
+>> Thank you.
+>> Susan, can you please confirm the team
+has left?
+>> Somebody new has entered. Is it the next
+Uh no that's neither that's our
+volunteer.
+>> Yeah I think the previous team has left
+all of them.
+>> Okay then uh then we will be going ahead
+and calling the next team sir. So or do
+you need uh anything uh any? Yeah sure.
+So then we will be going ahead uh with
+the next team. The next team will be
+uh IA251 autograde. Uh the team member
+joining will be Alanto Manu. Uh so one
+sec. What is the where is the last team
+from? Which institution?
+>> It's from Pune. Uh let me just just give
+me a minute.
+The college is PES modern college of
+engineering Pune. And uh the next team
+will be from uh St. Joseph College of
+Engineering and Technology Pal. The team
+>> Okay.
+>> The project title is autograde.
+>> Sure. Uh okay. Admitting the team
+>> good morning team. Uh Alendo, can you
+hear me?
+>> Yes sir. I sir I can hear you. Sure.
+Thank you. Yeah, you're audible. Thank
+you for joining today. Uh so we have uh
+Sadish Babu and Waggi Srian here as the
+jury member. Uh okay you can uh uh like
+uh jury till jury this is Alanto Manu
+from centers college of engineering pal.
+Uh they will be presenting uh their
+project uh right now. So you can go
+ahead and uh start alto manu. And the
+thing is that we will give you a warning
+at 10 minutes uh because we are planning
+for 12 minutes of presentation and then
+the the floor is open for Q&A. That's
+how we are planning as already
+communicated.
+>> So we can start. Thank you. And uh will
+you be on video mute or will you be
+turning on to video?
+>> Uh okay I I can turn on my video.
+>> Sure. Thank you.
+>> Okay.
+>> Sure. Please go ahead. Thank you. All
+the best.
+>> Okay. Let let me share my screen. Okay.
+>> Is my screen visible?
+>> Yes. Yes.
+>> Oh, okay.
+Okay.
+Uh myself. I'm from St. Jose College of
+Engineering and Technology. I'm here to
+present my project autograde an
+intelligent exam sheet scoring system.
+Um this is guided by uh Dr. GP Joy. Uh
+these are the contents of the
+presentation and coming to the project
+overview. This is an uh a powered
+platform. It is designed to automate the
+grading process of the descriptive
+handwritten
+uh descriptive handwritten answer sheet
+using the cutting edge technologies and
+large language models. Uh this project
+aims to eliminate the need of manual
+checking and it delivers faster and
+accurate and consistent evaluation
+transforming our traditional educational
+assessment process. Uh these are the
+problems solved with the help of this
+application. This reduces the grading
+time and saving the valuable time of the
+teacher and it cut the evaluation code
+with the help of the AI powered
+automation and it gives the student the
+clear evaluation results and feedbacks
+based on where the mark is reduced and
+it give the students uh usually need to
+pay for the answer sheets but here we
+are providing it by cloud instantly we
+are delivering the results so it
+eliminates delays and stress and it also
+provides a realtime tracking for the
+grading and process for the teachers.
+The core architecture of this project is
+mainly the front end is built with NexJS
+for the responsive UI and everything and
+back end is built with NodeJS and this
+is for the PD processing and handling a
+lot and everything and I have I'm using
+the large language model here uh as
+metalama 3.2 two vision model for OCR
+and I built a OCR on the top of this
+model and also we have used 3.3 instruct
+model for semantic reading a database is
+used with the help of hostess and I have
+used uh main name drizzle which is
+hosted on neon serverless and I am using
+radius for the caching which is provided
+by abstach and the cloud provider I'm
+using is cloudy and I'm have hosted this
+application in versel and also the
+backend servers are hosted in versel uh
+sorry run co and railway and here the
+vector store is coming from uh uh the
+same neon server system it's a bg vector
+store and they I'm using hacking face
+embedings too uh the entire thing is
+automated with the help of uh github
+actions and uh doer whenever I commit
+the change commit anything to the main
+branch it will automatically push to the
+uh docker hub and the image will be uh
+rendered on the uh particular uh several
+servers and these are the implementation
+details uh the OCR pipeline is includes
+a PDF popular module which is uh capable
+of extracting the 120 text to uh digital
+format with the help it is done with the
+help of metal lama 3.2
+And here I am using the reasoning based
+evaluation. Here the descriptive answers
+are evaluated based on the reasoning
+model of metalama 3.3 model and also it
+is implemented with help of the ra uh
+the data storage and using the cloudary
+for storing answer sheets and answer
+keys and also uh for uh reports and
+scores we are using postsq and for cloud
+cloud native solutions basically uh
+everything is hosted on cloud services
+like uh serverless possession
+radius caching for
+recently used answer keys and this this
+entire application is built on load
+balanced with the help of multiple
+servers and there's a round probing
+logic is running in the background to
+balance the load whenever multiple users
+comes to the system. Here realtime
+insights are provided to this the
+teachers with the help of uh dashboards
+and for students they have we are using
+such several graphs and for showing the
+student performance and here the
+performance metrics of this particular
+project the accuracy of the OCR is
+around 97 to 99% depends on the
+handwritten clarity and the evaluation
+time is only takes around 3 to 4 minutes
+of for a 30page answer booklets and here
+the time for the teacher it is saved
+around 95% than the manual grading. Uh
+the the variance of the uh manual
+grading bases this this system is only
+around 2 to 3%age. It is uh this result
+is actually achieved from 30 to 40 paper
+valuations which is done in our college
+itself. Uh the cost efficiency is around
+70% comparing to the manual uh current
+ongoing systems. The future scope is
+this particular project is like we are
+we can enable multilingual grading. uh
+currently this particular project
+supports English uh Hindi and couple of
+languages but here we can also include
+multiple multilangual language. Okay.
+Also here the di complex diagrams and
+map vision can be uh evaluated with the
+help of uh some vision models and also
+we we can implement the plagarism checks
+for deep uh for analyzing the copied
+content and everything and also there
+are for bulk upload and large scale
+processing we can integrate uh in
+whenever the product is on sale. Then
+also we have uh this similar
+technology can be adaptable to school
+boards, coaching centers, uh
+examinations, competitive examinations
+as J uh J advance and everything. Uh
+that's all time. I will
+share my uh screen for showing my
+software product. Am I audible sir?
+>> Yes, you are.
+>> Yes, you are.
+>> Yeah. Yeah. Yes. uh this is actually the
+software which I built for which we
+built for this uh evaluation process.
+This is the homepage for the teacher
+where we are uh mentioning how the how
+the these things how to use. We are also
+providing sample answer sheets and
+sample answer keys. Uh also we we
+specified a answer key format. This is
+the most common format which is followed
+by every universities. The KT is
+following this similar structure. So we
+follow the same structure here. Uh this
+is a teacher where the evaluation
+process is going on. Basically providing
+the teacher ID and details. I uh
+uploaded the answer sheet up front for
+saving the time. Okay. Here I uploaded
+the student answer sheets for the demo.
+And next I will convert this answer
+sheet to the digital digital I mean
+digital format. Uh here uh this is done
+with the help of the OCR. Uh this is not
+like the our common OCR. Whenever we
+come with the normal OCR, we will
+definitely fail when we coming with the
+100 things. The core idea to come up
+with a LLM to uh build an OCR is like
+how we our teachers will able to
+evaluate our messy answer sheets. It is
+only because of his or her experience in
+evaluating the answer sheets. Couple of
+he or she have 15 or 16 years of
+experience in evaluating this messy
+answer sheet. If as a student if I ask
+my friend to evaluate my I mean read my
+answer sheet he may if it is missing he
+may not be able but my teacher can this
+is only based based on the subject
+knowledge first the second factor is the
+experience. So basically when we go with
+the the experience is there but the
+subject knowledge such kind of things
+won't be there. So basically when you
+come up with LLM we have an idea and
+whenever we add a top layer for this OCR
+it it will perform best. That's why we
+got the results. You can verify the
+results based on this uh m/s and
+everything how messy it is. But actually
+we can we are able to do that in a
+perfect way. The next part is like we
+are uploading the answer key here. The
+answer key is uploaded. Uh this
+basically the format is like the answer
+key answer question will be there. Then
+if there is a uh the explanation to mark
+example two mark such kind of answer uh
+key is provided how our university
+provides here the uh random
+implementation comes in whenever I
+whenever the question comes to the model
+it will definitely retrieve the question
+plus there whenever we can we can upload
+pre-upload the video study materials all
+the study materials related to the
+course so definitely it will fetch the
+thing and it will uh retrieve the
+documents I mean chunks of the data plus
+it will rearrang it and for the token
+limits and everything so we will rerank
+it and provide the top 10 element 10k
+elements I mean they will be provided so
+it based on that it it gained the domain
+specific knowledge for the evaluation so
+the evaluation will be crystal clear
+that's the key thing this is a radius
+actually the provider here the answer
+key which is recently used is cache so
+here when I select it it will it will
+become radius so this is whenever I hit
+the next button You can see the
+evaluation results here. Uh the first
+three questions are evaluated with 100%
+of confidence where the first fourth
+question is not 100%. That's why it's
+open textbook. Here the confidence level
+reduced because of the diagram. Here the
+diagram is uh it's not it's complex. So
+it is unable to detect because if we
+want to achieve a 100% of uh accuracy
+and consistency we can't go with
+diagram. So each each person will draw
+in a different manner. So basically we
+can't go with it. So I I just overrided
+manually overrided this thing and it
+will dynamically fetch the answer uh
+diagram marks from the answer key and it
+display here. This is this two what I am
+showing in the text box is the theory
+mark the the just the two marks for the
+diagram. So teacher can only award two
+marks for the diagram apart from these
+things are uh I mean not not editable
+fields. uh so when whenever we can after
+the evaluation it will go for the thing
+here there are lot of logics like
+revaluation such kind of thing is uh
+implemented so basically the previous uh
+student ID will be matched against the
+database and it was called either it
+might be a revaluation or the teacher
+may misunder the student ID so we can go
+for the both thing so uh okay we can go
+for the thing I will just enter a
+I just entered a student ID and the
+student score saved successfully Okay,
+here the next panel scores the teacher
+can go to the analytics section and
+teacher can view that uh what all the
+courses teach evaluated and what are the
+things paper subject here in detail
+course can be evaluated here the teacher
+can set a pass percentage and download
+the excel sheet for this particular
+students and it can be exported easily
+so teachers don't want to take extra
+effort for doing this thing so uh the
+next uh platform is for the students
+here I have a student platform where uh
+the where the students have a separate
+login here after the login the uh
+student can view their dashboard here
+I'm just going for Google login here you
+can see after the login I can see the
+dashboard this is student dashboard here
+you can see the currently evaluated
+course here when I go to the course here
+we are displaying our answer sheet this
+is cloud in our cloud storage so
+basically we need to pay an extra amount
+to the universities to get this answer
+sheets currently we reduce the cost so
+currently 750 or 850 rupees is not
+supposed to be paid by the student. It
+is displayed here. So they can do that
+part also. Apart from that we are also
+giving the question based analysis and
+it will clearly mention that where the
+mark is why the mark is what is the real
+answer. The thing is like whenever it
+have the subject knowledge of the
+particular LL can reason accurately and
+it gain the domain specific knowledge.
+So basically we can give all those all
+all those informations perfectly. That
+is a key idea of coming with with this
+uh reasoning why the mark is the
+feedback for the student. This one
+definitely will help the students to
+enhance their learning experience and
+everything also we can provide some chat
+boards because the model gained all the
+long knowledge about the course. So we
+can definitely give a chatboard and
+student can ask any questions related to
+this. This is the software uh we built
+for this thing. Uh I finished my
+presentation.
+Uh
+>> I want to uh quick question.
+>> Yeah. Yes sir.
+>> How much of uh uh documents did you
+upload uh to from a rag perspective?
+Right. Uh you said uh study materials
+can be added uh answer keys can be
+added. uh you know potential past answer
+valuated sheets could be added. How much
+of that did you actually add?
+>> Uh actually I I come up with the I mean
+I just tested with our uh normal CBSC
+biology science. So I just uploaded the
+download the documents from the CBC
+website and just uploaded the documents
+for the rack structure. That is a key
+idea behind this rag structure. So
+basically when I whenever the question
+comes in I will extract the question by
+pattern matching. there's a logic there.
+So I just extract the question when
+basically then the rack will be I mean
+semantic match basically they will go
+for and retrieve the uh related chunks
+from the thing and I will reign it with
+a model which is running on the CPU a
+small small hugging face embedding model
+which is running on CPU level. So it
+will retract that thing and it with the
+reasoning model. So it will append the
+content specific domain specific
+knowledge to the uh LLM. So it can
+reason correctly and it can basically it
+got the answer key. So they got the
+answer key basically the explanation and
+now the model knows what is the right
+explanation what is the right exam based
+on this right.
+>> Okay. How do you make sure that if the
+question is slightly varied right you
+will get the same result because that is
+where the hallucination typically would
+occur
+>> right because if it doesn't understand
+the question and if it can if it can't
+>> uh you know get the feature very
+specific feature
+>> uh you would probably have the llm
+hallucinating so in this case how much
+of you know feature mapping did you do
+because if it is 100% feature mapping
+then obviously we going to have
+challenges when the questions change or
+the questions are reword right
+>> uh basically uh we we basically give
+this answer uh answer sheet I mean the
+digital answer sheet of the student
+particular question plus we will embed
+append the answer key plus the argument
+so basically we will we set the
+temperature as zero so basically it
+won't think more I mean it won't
+basically
+>> so what you're saying is the exact
+question with the answers or the answer
+key is what you load from a matching
+perspective.
+>> No, I mean we have two modes sir. Uh in
+the in that LLM itself we have two mode
+actually there is a liberal mode and
+normal mode. In liberal mode it will
+evaluate liberally uh whenever come to
+the normal mode it will normally but we
+are actually setting those things. We we
+can manually change those things uh
+based on what we want. That's the case.
+So if it is coming for the liberal mode
+it won't be checking that as it is. If
+the answer is as it is not it it will
+think like a teacher okay from the
+teacher perspective he is expecting
+something like does the student actually
+gained some information or the pro
+outcome or the program outcome is gained
+or not that is the core logic of the uh
+examination. So in the point of
+examination it will think just recently.
+Okay. And uh this is a very well-ritten
+uh handwritten document meaning this is
+not how messy. If you say this is messy,
+I would disagree with you.
+>> Yeah, of course.
+>> What levels of messiness did you test
+out? Because accuracy of 97 to 99% is
+almost impossible for any kind of
+written document. This is a very
+well-ritten document.
+>> Okay. So, so how much how much did you
+how much of variance did you do?
+actually I mean I presented this in a
+conference and they actually tested in
+multiple scenarios. I will show if you
+are ready I will show a document I mean
+they uploaded they uploaded a document I
+mean which is not easy to read by ML
+model uh I I will try to upload the
+document and show you I mean uh is it
+the level of messiness I mean it won't
+be too I mean it's actually not capable
+to read perfectly but it is
+This is a document actually they tested
+with. So are you uh visible sir?
+>> It is visible. Yes. Sorry.
+>> Yeah. I mean is it uh okay? Okay. I mean
+the each each word is not too easy to
+read actually. Uh some of the thing is
+like but is not able this is right
+actually. So this is the level of
+messiness I think what you expect. Is it
+right sir?
+>> No but that's okay. I think Satish.
+>> Okay. Uh
+I mean whenever the student is okay
+ready for uh right I mean the teacher
+should understand. Okay.
+>> Hold on hold on. I think Satish has a
+question.
+>> Thanks for your presentation. So uh are
+you aware of any universities or
+colleges who are using uh not your
+product but any similar product which is
+using 100% AI to score sheets.
+>> No I never seen I actually went for an
+expo I mean they invited us to present
+our software for the expo but many LMS
+providers actually reached us because
+they are ready to integrate but they
+told like currently we don't have a such
+thing in our market. I mean like uh like
+this evaluation is I mean this kind of
+the end to end software is not available
+in the market like uh processing the
+thing with the help of LLM it's not
+available I referred several e uh
+conference purpose I mean purpose search
+purpose it did gives like some of the I
+mean question paper I mean pattern
+question like keyword mapping keyword
+matching is there whenever it is not
+reasoning it properly because they are
+not using lms So
+>> okay uh so are you aware of the reason
+why uh most universities prefer not to
+use such a product?
+>> So hello sir uh can you come up once
+more?
+>> Can you think of some reasons why
+because LLMs and AI has been around for
+more than a year now and
+>> theoretically it is not very difficult.
+Why do you think universities have not
+adopted this in large scale so far?
+>> Uh the thing is like there are multiple
+scenarios. I mean when in our current
+system I mean if student can write in a
+specific way then then student can
+continue the answer sheet in this line.
+I mean if the start from here student
+can write from this if we coming to a
+math question someday he can mess up the
+lines and everything. So it will be
+hard. Okay. Let let us differentiate
+that the first task is the OCR
+>> that is conversion of a answer paper
+into something that is computer readable
+which is maybe in ASKI or in some other
+format.
+>> That is one task.
+>> There are significant challenges there.
+>> The second task is given
+uh an input in computer format which
+means doc x or pdf or whatever. ah yeah
+>> judging that and both these tasks have
+their own challenges.
+Uh uh I am not convinced that burgis's
+question is very relevant. I'm not
+convinced that uh
+uh the first part that is uh parsing a
+handwritten document in a technical
+subject meaning these are all exams
+which means you know uh at least 12th
+plus kind of grades and these are
+subjects which are uh which have a lot
+of jargon meaning language specific to
+that subject which is not general
+general purpose. So the conversion of
+that handwritten text with anything
+above about 50 60% accuracy I'm not able
+to believe that that can happen. That's
+number one. Uh but that's not where my
+problem is. That is a significant
+challenge that converting this
+handwritten stuff into sensible text.
+>> Ah yeah of course.
+>> Second part is to do with the actual
+scoring of the text.
+>> Yes. Now what do you think are the
+ethical and legal implications of such a
+tool? So suppose you apply the soft and
+there are many ways to fool the fool the
+AI for example just like you have deep
+fakes there are ways of fooling AI.
+There are ways of determining whether it
+is AI or not. There are so many
+complications there. But what do you
+think are the ethical and legal
+implications of this? Suppose the
+student go to goes to court and say the
+AI has not understood anything of what I
+have written.
+>> Okay. But but we are actually providing
+the reason why your mark is lost. What
+is the reason behind losing the mark? So
+definitely student can refer those
+>> descriptive question is answered by the
+student in a certain way.
+>> Now when you say answer keys these are
+not objective type questions. Objective
+type questions any computer they've been
+doing it for last 20 years.
+>> Yeah. Yeah. subjective open-ended type
+answers.
+>> Yeah.
+>> How do you have a key for that?
+>> I don't know.
+>> So when you say you hand over the keys,
+how do you have a key for an essay? Uh
+>> I mean this is how our university
+actually follows. They are actually
+following like
+>> you have taken one subject
+>> particular question.
+>> You have taken one subject. I'm talking
+in general about I'm talking about say
+linguistics which is a subject in your
+university.
+>> Okay. And the linguistic question is
+about comparison of Indo Dravidian
+languages.
+>> There are so many ways of writing an
+essay like that. What would LLM do with
+that?
+>> Uh
+>> what kind of key can you hand over to
+LLM?
+>> Okay. Okay. I mean some papers don't
+have the actual what key we expect.
+That's the key thing.
+when we
+principal they actually told like
+majority of our KTU answer answer papers
+I mean answer sheets uh which question
+papers which is released have a key with
+the university so they basically this
+hand I have I was talking about the
+legal aspect of it somebody can go to
+court and then it's very very hard to
+prove that you know a is right
+>> then they'll start questioning the key
+if you have such a thing called a key
+for a open-ended question But what about
+the ethical aspect? Have you heard of
+bias uh in
+>> NLM? Yeah. Yeah. Yeah.
+>> What is bias?
+>> I mean like uh it can vary based on the
+how much we I mean how you access the it
+can vary I mean different times it can
+it may not be consistent inconsistencies
+there.
+>> Well bias has been well documented in AI
+and there are significant issues shall I
+say. So I'll stop here. Uh, any closing
+questions?
+>> Hello.
+>> One sec.
+>> Um,
+yeah, go ahead.
+>> I I think you asked us my second
+question which was the scoring part and
+how much of reasoning is is around the
+scoring. Uh, but I think I you know uh I
+I leave it at that. U one more thing uh
+did you use any papers? You said you
+checked multiple papers but there are
+many papers around uh hand
+identification of handwritten and then
+conversion of that into reasoning.
+>> Okay.
+>> Did you use any papers around it? Did
+you check with uh for example where did
+you get your set of answer papers for
+>> uh answer papers or answer keys?
+>> Answer uh sheets or handwritten answer
+sheets and obviously the keys as well. I
+mean uh we just created I mean we have
+our own internal examinations I mean
+answer sheets we just took it from the
+our college itself and we just tested I
+mean the teachers are really interested
+to check it whether it it will work or
+not they are really interested to check
+it so basically I mean didn't I mean
+whenever we tested it actually
+>> how many how many how many did you get
+and how how varied were the subjects
+>> uh this actually I mean there was not
+too much variance like uh there was some
+question from I mean uh this computer
+network was there. Uh some of those DPS
+was there. I mean diagram question I
+mean diagram answer sheets were there
+also some there were I didn't take some
+answer people like engineering mechanics
+or something it will definitely fail
+because it's full of diagrams. So that
+kind of things it will definitely pop up
+I mean open the text box so uh it
+doesn't make sense. So basically uh rest
+around 30 is taken and teacher put 40
+mark teacher put around 35 our uh thing
+gives around 32. So uh teacher told okay
+this is because if they ask that a
+particular question it is actually
+reduced. So if I ask the teacher that
+why it is reduced because teacher said
+like okay I think like the student
+understand what I mean he studied or I
+mean what he understand the topic. That
+is the question that Satish asked right
+>> if right if the if let's say in this
+case you go to code I give you the
+solution you go to court and say that
+>> I got 32 now see the difference between
+35 and 32 32 is failure
+>> and 35 might be a pass
+>> okay yes
+>> right now now that you now that is why
+Satish asked that question right
+>> ah yes yes that's the thing yes there's
+a slight variation will be there because
+the inconsistency is Here of course
+there will be of course this is not too
+much inconsistency if it's 2% or 1% is
+actually teachers are got accepted okay
+if it's in a primary level because the
+reasoning is anyway they are giving the
+feedback so the student can actually ask
+for if a revaluation or such kind of
+things needed we can give a button or
+something for the revaluation for the
+particular question or something we can
+do that part
+>> all right thanks thank you
+>> I have a couple of add-ons the
+suggestions for you first is that uh the
+main problem with approach is that there
+are no safety nets which means there is
+no human being that cross checks some of
+this at least the outliers suppose
+somebody get 100% or somebody gets 2%
+marks then there's no human being to
+cross check what the head is going on so
+if it is human a day so it's it is AI
+plus human then there is some scope of
+at least some non-technical subjects
+that this could be used and the second
+is that uh there are places where such a
+tool is useful. So those are not
+complicated legally or ethically and all
+that. Suppose somebody wants to you know
+capture some written notes or something
+like that and you know store it
+somewhere. For those kind of things
+there may be a utility in such a tool
+but for exams I would say it is very
+difficult to kind of use it as it is. So
+thank you very much and back to you
+Arvin.
+>> Oh okay.
+>> Thank you Chas. Thank you, Alento. Uh,
+thank you for your presentation today.
+Uh, you can please, uh, leave the
+meeting room. Thank you.
+>> Oh, okay. Okay. Thank you.
+>> So, Alando is out now. Uh, can we go
+ahead with the next team, sir?
+>> Yep.
+So the next team will be uh the team ID
+is IA0299
+Echolink uh intelligent emergency
+response and crisis management system.
+Uh it's a project from
+uh
+government engineering college.
+So uh I'll be adding
+the team right now.
+I think we have uh Vishad Garta and
+Ashikar here. Uh
+can you hear us
+team?
+>> Yes. Yes.
+>> Okay. Sure. Thank you for joining today.
+Uh we have uh the chases here. Mr.
+Sadesh Babu uh
+co-founder and past president of INA and
+Mr. Vagisar and head of technology
+services at USG. Now uh you can start
+your presentations. You will be having
+12 minutes for presentations as we have
+conveyed earlier. At 10 minutes you will
+be given a warning uh and uh once 12
+minutes up the it will be all to the
+judges the Q&A will start. So that's the
+idea. uh we can start uh and you can if
+you have a presentation you can start
+sharing it and start the presentation
+over to you. Thank you.
+>> Yes, thank you. So uh Ash can you share
+the presentation?
+[Music]
+should be
+excuse me team. Uh sorry for
+interrupting. Uh can uh Ashik please
+mute? There is an echo coming in. Uh the
+ones who is talking can uh turn on their
+microphone.
+>> Okay.
+So hello everyone. So we are team studio
+and we are presenting our project that
+is echolink.
+Um
+okay so we all know like what the
+disaster management we all know about
+disaster management response right so uh
+even with the advent of AI we still have
+not uh like we have not implemented a
+lot of the capabilities of AI into
+disaster response management. So uh we
+we all are familiar with uh like
+incidents like KA floods or even
+landslides why not landslides and all in
+all these situations what an idea that
+came up with us is that uh we can
+actually implement the fast
+responsiveness of AI in order to
+actually uh augment our augment the call
+centers in order to uh get them to a
+faster safety net. Okay, that is our uh
+that is our main idea. So in the realm
+of emergency response the efficiency and
+accuracy are like really paramount and
+for in traditional call center cases for
+example metrices from uh I don't
+remember like I don't remember the exact
+place but uh the metrices from uh US
+call centers is that almost 63% of the
+call centers are actually understaffed.
+So in case of an emergency where lives
+matter the the
+uh the fast uh the respon the fast
+responsiveness is of ultimate
+importance. So if uh so with all these
+in mind we are presenting our project
+the echolink AI in order to actually
+help the call centers in uh it's not uh
+it's not actually replacing the call
+centers or the people in the call
+centers. it is actually a method to
+actually help them into help them to get
+uh uh get to a faster response. Okay. So
+we all know that uh okay it is one of
+the fundamental rules of UI uh like user
+experience is that it is easier for us
+to read than to hear and it is easier
+for us to talk than to type. Okay, that
+is uh that is the fundamental uh
+fundamental tagline that we built this
+entire thing in.
+uh if if you have a option between
+having to read an entire passage of uh a
+passage of uh a call called response or
+to hear the entire thing the reading
+part will be obviously faster especially
+if it is combined with the power of
+generative AI. So can you go to the next
+slide?
+So to improve the emergency call to
+centers by enabling critical enabling
+criticality analysis from voice data
+efficient voice to text conversion
+seamless call integration and single
+click dispatch effective span detection
+to enhance the response speed and
+accuracy that is the problem statement
+that uh we have chosen. So uh if if
+there exist a more uh if there exist a
+tool that is actually able to uh uh to
+to act respond to users in a real time
+and decide which which department or
+which uh which forces to be sent to a
+certain place. uh all these extracted
+from the call itself and um and have the
+have the uh call center operator
+actually uh crossverify this in a single
+in a in a glance and then send forces to
+to that certain place in a very quick
+manner that is uh that is I think that
+is a really really important thing.
+Next can you
+so objective of the project was to get
+the criticality analyst from the voice
+to uh to convert the voice to text to
+have the call integration and single
+dispatch and spam detection. So out of
+this uh like we were planning on a
+really a really great awesome project
+but uh in the end as all good things
+come uh there were many uh many setbacks
+for example uh one of the very important
+thing uh that we couldn't we couldn't
+actually do was that uh to integrate
+local languages for example like the of
+course uh the calls are actually coming
+in local languages for example if there
+is a problem in Kerala the calls will
+obviously come in Mallaya So for that we
+actually tried testing uh models such as
+uh uh wave toe wave toe fine tuned with
+my alarm language uh like there were
+models available in hugging face but the
+these models even though they give a
+gave out a certain level of accuracy but
+uh they were not they were not up to
+that standard to be able to uh
+implemented in uh implemented in a in a
+system that actually requires a really
+good uh response. Okay. So uh that is
+one of the hitchbacks that we face.
+Another FA problem that we faced is we
+wanted to integrate the calls uh from
+the mobile call itself. But that was
+something that we going to do because uh
+like uh because of some limitations
+between giving out random numbers to uh
+so we tried many services like exotal
+and tilio had a policy but uh that
+actually uh didn't allow us to uh create
+numbers uh so exot didn't allow us to
+create numbers to actually take these
+calls uh without actually giving a
+company registration or something uh GST
+number and all and uh for for the case
+of Twilio the international calls were
+taking up too much too much cost. So
+that is why we we actually created a
+simple simple uh dashboard that actually
+uh that actually takes a
+so it's it's an emulator in simulator.
+Okay. Can you go to the next slide?
+So uh the incoming calls are actually so
+the ideal scenario is that incoming
+calls are actually rooted and to the
+speechtoext module and to call analysis
+module. These are connect back to the
+LLM. Then they are stored in a database
+and then the operator can actually uh
+decide which dispatch service to send
+to. So here we are implementing a uh
+implementing an endpoint where uh like
+an open standard where the dispatch
+services can create third party like
+plugins for themsel. For example, if we
+we have things for ambulance, fire and
+fire uh polace, but uh things such as if
+there is a if there's a case where we
+need a third party service, we would uh
+we can have them uh onboarded uh easily
+with our endpoint. So, uh it's just
+sending a uh sending an endpoint to them
+like uh AP endpoint to them. Okay, go to
+the next.
+Next slide. Okay. Um, can you skip that?
+So that is the UML diagram of this. So
+here we have the use case diagram. So
+I'm just speeding things up and
+okay that is uh we had a great design
+but in the end we couldn't actually uh
+implement a lot of those designs because
+we wanted to have that fast uh product
+that uh we made something quick uh with
+uh Python uh Python and PIQ. Okay, go to
+next. Okay. Uh so let's go to a demo.
+And uh so for the services that we use
+we have tried multiple services uh like
+I've told for the call part we tried
+things like exotent will and uh then we
+tried to source an uh an inter one or
+two international numbers but that all
+went to a dead end so we couldn't
+actually implement that and uh for the
+piqt for the UI part we did it in piqt
+and we have a demo page in uh like next
+also uh the intended software but uh in
+the one in pyq we actually used uh
+services like we tried services like for
+example the latest geiny live streaming
+service that uh that this came out we
+some just some time before our project's
+presentation and uh and then uh that
+that actually had the support for local
+languages but uh we couldn't actually
+implement that part uh but what we
+implemented is that uh to use Hume AI
+and also we tried 11 labs but uh because
+of that uh time latency thing we
+actually went back to humanai. What
+humai gives you is it will provide a
+live communication platform. So if you
+you can have a live conversation with an
+AI and it'll give you the transcript of
+the text as well as the criticality what
+the tone of the the emotion or what the
+tone of the text is. That is what we are
+getting and so let me share my screen.
+Uh
+so here is a dashboard that we have.
+Okay. I hope
+I hope you can see this. Uh so uh
+maybe if I start the conversation uh
+what will happen is that the we'll see a
+live transcript of what is happening
+here. We have a database of whatever is
+happening here. And uh the problem is
+that uh the
+uh you'll see that uh the transcript
+actually takes a bit of latency and also
+it is that uh
+okay see the the entire thing is being
+said but uh now it'll talk back to me.
+Uh
+>> hello this is Echo from emergency
+services. I'm here to help. Please stay
+calm and tell me what's the emergency.
+>> Uh were you able to hear the sound of
+the uh this thing talking?
+>> Yeah. Okay. Okay. Okay.
+So, here's the problem. Without a mic,
+uh it actually loops back. So, there is
+a problem with that. So, if I use a mic,
+then we'll be able to uh like have a
+conversation with the AI like real
+conver like a real agent. And if I end
+this call, uh so this is a simulator
+environment. So if I just call the
+conversation summary will be actually uh
+will be updated and you can see it
+here.
+User uh user see
+uh discusses issues with the AI. Uh then
+there are all the histories that are not
+actually marked as resolved. There are
+some issues. So this is another
+conversation that I just started and
+there's a fire reported near this place.
+So this passes the uh this parses the
+information of what what the place is
+all those things from the from the
+conversation itself. What we can
+actually do in the future is that if we
+if we can actually connect with the
+emergency services. So if we dial an SOS
+number we can see that uh it is actually
+taking all the uh location details from
+the user and actually sending it. So we
+can actually use that for better
+responses. And so here we are showing a
+map and this problem uh the place here.
+So if we click dispatch you can see
+which uh which service to send to that
+place and we can actually mark this
+thing as a result and that'll give green
+green time. You can see the history of
+what what what all were happening. So we
+can see a time stamp. You can see a
+summary of the calls. We can see the
+live transpect of the calls of each call
+here and the criticality of each of
+these calls. For example, this was a
+dummy conversation. So the criticality
+is low. EPAM is yes. Uh so the user is
+unknown. the location is unknown because
+there was nothing much in that call,
+right? Uh the same for this case. Uh
+user discusses the low priority maybe
+not a spam and the no other details were
+being sent for but in this case we have
+a fire report that has a medium priority
+and uh the the location is actually
+given and uh
+so that is the gist of it. So uh we can
+see the call history is here and also
+the analytics of how many uh like how
+many calls were taken and all those
+details here that uh so another intended
+thing is that uh we have a excuse me
+uh can you see
+Yeah. Okay. So in this live demo, so
+this is one of the UIs that we enision
+like we couldn't actually like
+integrated with the uh like proper front
+end only part. So this is actually a
+demo that is actually like hosted in
+versel. So here we can click the pol and
+the dispatch service has sent po to that
+area. So we can see the uh like live
+a live emotions or what the what the
+tone of the speaker is. So yeah that is
+about it. Uh did I miss something? Ash.
+>> Yeah sure. Over to you J.
+>> Yeah. So my name is Satish and uh uh my
+first question is in one sentence what
+are you trying to do here?
+>> We are trying to improve the speed of uh
+disaster responses in call centers
+with AI.
+>> Disaster responses in call center. Uh
+what does that really mean? Can you give
+me a use case?
+>> Yes, I get. So uh suppose there are like
+uh okay of I'm sorry I didn't say it in
+the presentation itself because of the
+okay so uh suppose there are 10 calls
+that are coming to a call center so uh
+call center that is that is
+>> so these are telephone calls
+>> yes telephone calls
+>> not WhatsApp calls or uh
+>> no no
+>> SMS or uh anything else only telephone
+voice calls
+>> yes voice calls
+>> mhm
+>> so there are 10 calls that are coming up
+and already this enter is thick pack and
+people are actually talking to talking
+like all suppose all the operators are
+actually talking back. So what our what
+our project does is it actually takes
+the these calls in parallel and actually
+lets an agent talk to that and actually
+is lets the operators see the see in the
+dashboard how critical each of these
+calls in is in real time and if it is
+needed you can he can actually see the
+transcript and if he if he can actually
+see what the problem is. Is there any
+problem with the AI that is actually
+talking back or how if it is really
+critical he can actually step into that
+call and actually uh like uh connect
+with the person.
+>> So what is really new because there are
+a lot of chat bots which uh communicate
+you know through conversations
+uh with telephone lines. Earlier it was
+uh you know you press one and press two
+and all that. Now it is all talking
+also.
+>> So what is new in this case? uh what is
+new is like uh the AI so the project
+started like one year back so then we
+couldn't actually there were there were
+no cases of uh like in my in my personal
+experience there I haven't seen any kind
+of AI that actually talks back to the
+call in in the context of a disaster
+management I have researched but I have
+not found anything that actually uh does
+this exact thing
+>> okay so uh uh the the the problem with
+disaster is that it is time critical.
+>> Yes,
+>> it's also theme critical meaning, you
+know, somebody may be about to die.
+>> Uh I'm not sure if you heard of a very
+famous case study called LA, London
+Ambulance Service.
+>> You can look it up afterwards on the
+internet. So what happened is that in
+the early stages of computerization
+about 20 25 years ago the London
+computer dispatch of ambulances
+>> decided to switch to a computerized
+system from a manual system.
+>> Uh and there's a lot of story you know
+what happened actually and all that but
+finally it ended up killing many people.
+uh you know sometimes ambulance is
+getting late by 12 hours
+>> all because of the fact that the system
+could not anticipate what is about to
+happen.
+>> Now your system you're saying that uh
+calls come in and if the operators are
+busy then the call goes to an AI robot
+chat chatbot.
+>> Yes.
+>> And the chatbot tries to do some kind of
+sentiment analysis to figure out is this
+critical or not. M
+>> uh and then if it's critical it probably
+pops up a you know message in someone's
+console saying here is something
+critical attend to it neededly.
+>> Uh so uh the first challenge of course
+is in understanding uh if you are really
+talking about on the field system not a
+theoretical system in the lab uh is in
+understanding what the speaker is
+talking about. Uh so here in IT we have
+dealt with many emergencies like the
+Kerala floods you mentioned but much
+before that the 2004 Indian Ocean
+tsunami
+where a Kerala I ka section team went to
+different places including Tamilad and
+Kanyakum community district all that the
+problem is when the call comes in it is
+almost incoherent
+>> uh it is not even good speaking meaning
+the person who speaking is under
+tremendous pressure.
+>> Yeah.
+>> Uh so to understand that person if you
+do not know the language uh if you do
+not know the place names uh if you do
+not know the contact the the actual
+background or context it is very hard.
+>> Uh that's one challenge. Maybe we can
+overcome that challenge by training the
+network or something. I'm not sure.
+Yeah, that is a challenge that is faced
+by the like by the that is bottleneck of
+the technology itself because like we we
+know like this we the even the latest
+technology is bad at understanding
+slangs understanding the dialects that
+are there or things like that that is a
+bottleneck that is that the technology
+that uh provide like that stops us
+>> right uh then the second is uh you you
+convert it into some kind of textual
+information and then you do
+sentiment analysis on it. How far is
+that kind of free from bias and all
+that?
+>> So, uh the sentiment analysis actually
+is not done in the text itself but the
+hum for example in the in our case we
+are using hum. So hum actually provides
+us like the the sentiment in the sound
+it is. So how hurried the voice is how
+concerned the voice is
+>> in what parameters
+>> in in in in what kind of parameters?
+What does the software tell you? This is
+urgent. This is not urgent.
+>> It's not urgent. It is like uh the mood
+of the voice itself. It is sad. It is
+urgent. It is concerned. It is happy.
+All these things.
+>> Uh how does it tell you? Meaning what
+does the function return?
+>> Uh so uh it returns the uh like it
+returns a set of parameters like for
+example happy like sad concerned all
+these like there are set of values that
+are there and it gives a provides of a
+confidence for each of those.
+Right. Okay. So, we're not even looking
+at what happens subsequently. Meaning
+there is a popup that comes up. We
+stopping it right there. Uh because the
+first stage and the second stage we
+talked about there are many challenges
+and these are not easily kind of
+the main problem being the context. Not
+because the technology cannot do it. The
+technology is already available for
+various domains but not generally. If
+you found a general technology that
+handles everybody's questions uh then it
+becomes you know very language specific
+and all that. So there are challenges.
+I'll stop here over to you.
+>> Uh yes
+you talked about the solution you looked
+at.ai and I'm assuming you're talking
+about humor.ai and recognizing the human
+emotions. uh from a deployment
+perspective, how do we how do you make
+sure that this is scalable because one
+of the other challenges meaning to all
+the ones that Satish already mentioned
+is is something that you kind of
+considered right the call volumes at the
+end of the day the call center has only
+a limited number of you know pipes that
+they they have right so call volume uh
+becomes a challenge and if you're saying
+that okay the pipes are all engaged
+essentially you will pass this off to
+the uh agent
+Right. The automatic agents
+>> even the agents need to scale.
+>> Yes.
+>> Right. Because there are you know this
+is this is not a clean scenario where
+there is one call after the other
+coming. Right.
+>> So you need to really look at how we can
+scale it. So from that perspective what
+did you consider?
+uh so for now like as you see in the P
+actually is a completely locally running
+thing and uh yeah we haven't actually
+thought about uh like the scalability
+point of view but what what can be done
+is like uh the so there is possibility
+so we have seen that there is
+possibility of you may actually be able
+to take parallel calls and uh we have
+also seen that uh the services like
+exotu actually providing us so if a all
+comes to a pipeline you can actually
+redirect to various uh various
+individual pipelines or various
+endpoints that that can be like it can
+be parallelized into various endpoints.
+So that is uh that if if problems comes
+to that then we can actually see we can
+we we do see solutions there all these
+services that provide uh the pro
+possibility of parallel uh working.
+>> Okay. And then you talked about the
+dispatch, right, which is the action
+part of it.
+>> Uh is that something that you're looking
+at uh from a voice perspective or is
+that something that you're looking from
+a data perspective? Because once you
+understand the human emotions, you
+understand where the the call is coming
+from and all of that.
+>> Uh what kind of dispatch are you doing?
+Uh because the voice comes now it's an
+agent, right? So it's all computer now.
+You've converted the speech to text. So
+are you passing the information as you
+know data that goes through or are you
+passing on the calls as well?
+>> Uh we are passing all the data that we
+have. So for example the call recording
+the text that actual transcripts from
+from the text and also the location for
+quick access the location the the name
+of the user all these things are
+actually passed to another endpoint. So
+dispatch endpoint. For example, if there
+is a software for like so we so we
+haven't implemented that part but if
+there's a software for uh software for
+like uh uh the so it's basically the
+data that is being sent so whatever they
+want to do with the data they can
+>> okay did you consider the fact that
+that's a whole lot of data and the size
+of that becomes a would be a challenge
+to the latency problem that Satish was
+also mentioning because when a in a
+natural disaster environment bandwidth
+becomes a big challenge right it's not
+as if you'll have perfect 5G kind of
+services and all of that so data becomes
+very I mean bandwidth become very
+crucial
+>> but that part is only only localized to
+the problem of the disaster itself right
+so for example the in the call center we
+will have we will still have that
+>> correct but when you do the dispatch is
+what I'm saying
+>> so the dispatch happens to the like uh
+to the service between services itself
+right so that wouldn't be a problem
+>> but the dispatch see if I'm calling in
+from let's say in a coil
+>> there's no point in me dispatching to
+trandum right I have to dispatch it to
+nag coil itself right
+>> now in a coil there is a data problem
+>> you understand the problem is not in
+trandum the problem is because the
+disaster is at nag in a sense
+>> okay that's fine yeah sish any last
+questions
+Yeah. So, uh what this application would
+do if it were successfully engineered
+>> would be to perhaps shift the bottleneck
+from the the call taker to the the
+decision maker because some human being
+has to respond to these urgent pop-ups.
+>> Yes.
+>> Isn't it?
+>> Yes. But that there we have like the
+problem is that like uh not the problem
+but the thing is that we can actually
+that will make it much faster than what
+already exists.
+>> Yeah but that depends on the scalability
+that you build in. Suppose you have only
+one dispatch person and there are about
+whole lot of calls coming in and all of
+them are saying urgent. So you have 10
+popups on this one person's console.
+>> Right?
+>> But still that is better than him taking
+all these calls manually. right? One
+call after the it
+>> what would happen is there'll be 10 call
+takers I mean who are human beings not
+automatons
+>> and they will communicate to this uh
+boss in some way maybe intercom or
+whatever I don't know
+>> but here when you say that you are
+making the system free of human beings
+>> not free of human beings
+>> so you're saying it's not free of human
+beings
+>> no we we are like we are actually making
+it like to make the job of human beings
+faster or like to help So make make them
+uh the decision makers instead of
+actually taking the calls and like
+responding the calls individually we are
+like making them uh the only the
+decision maker. So because because
+because we can't actually give the
+entire control to AI itself. Uh that
+will be another big disaster that is
+coming uh as of now. But uh making the
+humans as a um as a point of uh control
+>> uh yeah so therefore the bottleneck
+>> the moment you say there's a single I
+mean the if you want to really make it
+scalable then you need to have multiple
+human beings at that point of the
+bottleneck.
+>> Okay. So I would have said this is
+useful not for disasters but for things
+like suppose there's a service center
+for TVs. M
+>> we won't register a complaint. My TV is
+not working.
+>> So there's there's no urgency. Nobody's
+going to die because you haven't
+dispatched anybody. Uh but you capture
+all the records and get more details
+what's happened with the TV. You know
+what is wrong? What is it showing? So
+maybe it can capture all those things
+without a human intervention.
+>> And then when the time comes the
+appropriate salesman can call in the
+field and listen to this uh and then
+take take a decision. So uh for that
+kind of a purpose where the urgency is
+not a factor uh this may be useful
+>> but if it is really urgent then you know
+things start going the problem is a
+disaster is not in one one point it is
+usually spread across a region maybe two
+or something and then you know the whole
+load of calls coming and then if your
+system fails you will have a
+catastrophic situation you you you
+promise that your system will take care
+of you know this kind of scalability but
+yet when it happens you're not able to
+handle it. M so also you might want to
+take a look at a software open source
+software called Sahana which is
+developed in Sri Lanka which is handling
+disaster they've been at it for the last
+more than 10 15 years now so they have
+matured in in quite a bit of if you're
+looking at disaster if you're looking at
+service centers and all that uh service
+requests then your system can be
+modified to kind of I mean the language
+still is an issue
+malam
+or you know any Indian language for that
+matter is still going to be a problem.
+>> So I'll stop here. Thank you very much.
+Back to you.
+>> Hi. Uh Aravind has some network issues.
+So I'll be uh taking over.
+So if everything is done uh uh current
+team can leave.
+>> Okay. Thank you.
+>> Thank you.
+So uh
+so the team members have left right?
+So uh can we move on to the next team?
+>> Yeah that's
+>> okay sure. So the next the team ID is
+IA0261.
+The project title is early detection of
+bine mastitis using machine learn.
+I'll repeat the project ID. IA0261
+I think yes we are in the waiting room.
+So shall I admit the participants?
+Which college?
+>> Just a second. Second I'll let you know.
+>> Yeah, the college is TK College of
+Engineering.
+Sorry for the network issue. I'm back.
+Okay.
+Yeah. Uh
+>> so Darren and Ahmed uh is here. So they
+will be presenting their project to the
+jury. Uh hi team good morning. Uh we
+have a jury here. You can uh start the
+presentation. You will be having 12
+minutes of presentation time and a
+warning will be given to you at 10
+minutes and uh after that after the 12
+minutes the judges will take over. It
+will be Q&A session. So yeah or YouTube
+you can start. Thank you.
+Yeah. Okay.
+Uh hello sir am I able?
+>> Yes you are.
+>> Uh so uh good morning everyone myself
+Dar. Uh I will be explaining about our
+project early detection of bow mities
+using machine learning.
+Uh we are from uh TKM college of
+engineering from department of EC. Uh my
+project members are Ahmed, Barak Moin
+and Abdul Rahman J. And we have done our
+project in collaboration with Veterary
+University Trashur
+uh and uh the associated faculty members
+are Dr. Vinatkumar K from college of
+veterary and animal sciences university
+prur and professor Vishnu professor
+Shabiras professor anosis professor sena
+a from tk college of engineer.
+So these are the contents that uh we
+will discuss in this presentation.
+So coming to the introduction. So
+basically we have developed a a device
+which can detect boine mastis in real
+time uh and which is easy to use to the
+farmers. So coming to what is bin
+mastitis? Bin mastitis is a common
+inflammatory disease which is seen in
+diary cows which is caused mainly by
+bacteria
+which affects the other and which leads
+to reduced milk production quality. So
+we have developed a device which detects
+massities in real time by using three
+parameters
+conductivity TDS and WBC count of the
+milk sample. So our device reduces the
+antibiotic overuse and prevents uh AMR
+and promotes sustainable livestock
+management and our project also benefits
+the rural community where farming is a
+li.
+So uh our project also aligns with the
+UN sustainable development goals such as
+zero hunger, food health and wellbeing
+and industry innovation and
+infrastructure.
+And this is our problem statement. We
+have tried to develop a device to solve
+this problem that is uh to detect the
+master status in its early stages. So
+the current detection methods are very
+costly and it uses only small less
+number of parameters which has uh which
+results in reduced accuracy and uh they
+need experts to be and the current
+methods need experts to be done. Uh so
+we have developed a low cost device
+which is easy to use and can be used uh
+by farmers alone. So these are the
+drawbacks of the assisting methods. They
+are having very high cost. They are
+having complex operation. They are
+nonportable. They are often time
+consuming and they take uh several hours
+or even they take several weeks to to
+give us the results and they only take
+limited parameters
+and these are the objectives of our
+project. We have um tried to develop a
+project uh which is uh uh we have tried
+to develop a cost effective solution
+which enables realtime processing and
+which is userfriendly and portable
+and a easy to use tool for diary
+farmers.
+And talking about the impact of mastis
+uh the mastis reduces milk production
+and weakens animal health. It affects
+the food safety and causes health risk
+from contaminated milk and it also leads
+to antibiotic residues and harmful
+bacteria spreading in soil and water
+and this is a recent study which was
+conducted by 80 and in this study it
+states that boast results in 70%age loss
+in milk production
+and this is the methodology which we
+have used we have collected the data uh
+authentic data from uh veterary velocity
+pressure. We have used that data to
+train the model and we have used a ween
+model uh for detecting the uh somatic
+the count of somatic cell from the milk
+sample. We have also used a we have also
+developed our own custom conductivity
+sensor and we have also used a TDS
+sensor
+and we have used a Microsoft setup for
+capturing the images of the milk sample
+and we have integrated all these into a
+3D design which we have developed using
+solid work software to uh which results
+in the final product.
+So we have actually developed this
+project in two phases. In the first
+phase we had only integrated uh two
+parameters that is pH and conductivity
+and this is the initial design of our
+phase one
+and in this design there was a manual
+mechanism
+as you can see in this right side of the
+slide. This was the device which we have
+developed in the phase one. So uh in
+this device uh we had to pour the milk
+in the beaker and we had to dip the TDS
+sensor and pH sensor into the milk uh
+which uh uh reads the pH and
+conductivity values of the milk sample
+and it predicts whether the uh
+particular milk sample is having mast or
+not.
+And uh we have further developed this
+first uh prototype into our final
+product by adding
+our own custom conductivity sensor and
+by using a Microsoft setup for counting
+the number of somatic cells from the
+uh milk
+from the cow. So uh now I am going to
+talk about the development of our custom
+conductivity sensor. So we have
+basically used a voltage divider circuit
+and a probe and a microcontroller
+uh for measuring the conductivity of the
+milk sample.
+And this is the conductivity sensor uh
+which we have developed. And you can see
+the
+realtime values which we have measured
+using the conductivity sensor.
+And this is the Microsoft setup which we
+have uh added to the initial stage uh
+for increasing the accuracy. So
+initially we were having a 600x
+magnification uh by using objective lens
+of 45x and an IPS of 15x and later we
+have upgraded
+uh into 1,500x magnification using 100x
+oil immersion lens
+and we have implemented a we have
+attached the Raspberry P to the IPS lens
+for capturing the images which was uh uh
+taken into the Raspberry Pi for further
+processing. And these are the images
+which you have captured using your
+Microsoft setup. These images are fed
+into YOLO V10 model for counting the
+number of WBC cells from the milk
+sample. So we have collected 252 sample
+images from 25 SWAT
+and talking about the WC count machine
+learning model we have used 10 model
+and the model was implemented in
+Raspberry Pi
+and these are the results of our machine
+learning model
+and we have received an accuracy of
+91.6%age six percentage
+and these are the output of our yellow
+model
+and this slide shows the uh validation
+data and the prediction data.
+It shows two batches basically the left
+figure shows left figure of each bar
+shows the validation data and the right
+figure in each bar shows the predicted
+data.
+And this is our final design. In this
+final design, we have incorporate we
+have added um a Microsoft setup and
+our custom conductivity sensor. And uh
+basically uh this design consist of also
+consist of an adjusting mechanism where
+we can adjust the microscope to take uh
+good clarity images. And this is a slide
+inserting session. I will be showing the
+working video in the later slide. uh
+which will explain in detail about the
+device.
+So this is a sliding mechanism. So
+basically
+uh this slide holder holds the slide
+uh which is used to take the
+uh images of the uh milk sample.
+So our device consist of a milk and
+stain dispenser unit. So uh if I am to
+explain detail. So uh this slide holder
+actually consists of a slide which uh
+which is inserted in the during the
+first phase and this slide holder which
+holds a slide moves under this milk and
+stain dispensary unit where uh initially
+a drop of milk is is dropped into the uh
+slide inside the slide hole and after
+that uh it is uh spread using a spread
+evenly. using a um a glass sl
+which you can see besides the drying
+unit and after that it moves under the
+drying unit where the milk smear is
+dried and after that the slide holder
+moves under the stain dispenser unit
+where a drop of stain is added and it
+again moves to the drying unit where the
+stain is dried. So now we get a uh
+stained milk smear and this preparation
+is then taken under the microscope
+where it adjusts itself to take images
+of uh somatic cells from different
+regions of the prepared milk sphere and
+these images are then fed into the yolo
+model to count the number of WBC cells
+in the milk.
+So this is the TDS and conductivity
+sensor which we have uh added in our
+device. And on the left side you can see
+the glass sl which I have mentioned
+earlier which is used to spread the milk
+and stain smear uh uniformly and this is
+the small working beauty of our
+prototype.
+So initially it measures the TDS and
+conductivity values as you can see
+and after that we have to insert the
+slide here. So we have to only insert
+the slide we have to do nothing. It will
+just count the milk and it will give the
+result.
+So now it is counting the uh WVC. I know
+it is uh dropping the milk. You can see
+milk drop command in the LCD display.
+And now you can see it is drying the
+milk.
+And you can see it is uh dropping this
+st
+and the stain is dropped. And the stain
+is dried now.
+And now this slide holder moves under
+the uh microscope where it takes the
+images and now it displays the number of
+somatic cells and it is and it predicts
+whether the C is having clinical
+mastities or subclinical mastics. So
+this is our uh phase one project phase
+one prototype and phase two prototype
+and this is a model comparison between
+phase one and phase two. Uh our phase
+one is having was having only two
+parameters and our phase three was
+having three parameters and we have made
+our final prototype a fully automatic
+system and we have improved the accuracy
+and as a future scope we have uh we are
+aiming to improve the AI model and we
+have we we are also trying to implement
+an automated sample collection
+and as a conclusion we have developed a
+real time mast detection machine uh
+which which is easy to use to the
+farmers. Uh we have to just insert a uh
+we have to only insert a slide at the
+beginning. It will just uh count the uh
+it will just predict whether the flow is
+having subclinical or clinical massages.
+Uh, I hope.
+>> Are you going to say something that
+stopped?
+>> I think there is a network issue inside.
+Does anybody else from the team want to
+take? Yeah, we can continue. Yes,
+>> can you hear us there?
+>> Uh, does anybody else on the team want
+to take over?
+Muhammad Abdullah anyone
+if you're speaking we are speaking on
+mute because we can't hear you.
+Uh hello.
+>> Yes.
+>> Uh hello sir.
+>> Yes. Who is this?
+>> The current must put here.
+>> Okay.
+>> Is this Darren? Uh I'm not sure. We not
+sure who this.
+>> Yes. Darren.
+>> Yeah.
+>> Continue.
+>> Yeah. Shall I continue my presentation,
+sir?
+>> Yes, please you can continue.
+>> Yeah. Okay, sir.
+Yeah.
+[Music]
+So, I was into the conclusion. So, uh in
+the first I have uh I forgot to
+st
+Uh the
+statities are two stages
+and subclinical.
+Subclinical
+um
+occurs in the early stage and if it is
+not diagonalized
+only it will affect the c.
+So our device aims to identify
+subclinical mast in this early stages.
+Yes sir. And these are the references
+which you have referred to and and
+that's it sir. Thank you.
+>> Thank you Darren. Uh you can uh I think
+there's a bandwidth issue. can stop
+sharing so that you can save the
+bandwidth and uh over to the judges for
+Q&A.
+>> Satish you understand?
+>> Yeah. So thanks Darren for the
+presentation. Uh it is good to see that
+uh this is a project that uh goes down
+to the grassroots of society with milk
+farmers and producers. So my first
+question is uh your testing machine
+uh where is it located in the lab in the
+dairy or somewhere else?
+>> So
+I think there's a network issue again
+with Darren.
+Does anybody else from the team want to
+take the question?
+>> Yeah, Darren rejoined. Darren, you can
+unmute and uh start.
+>> Yeah. Hello, sir.
+>> Yeah. So, take turn off your video
+>> otherwise you will lose bandwidth.
+>> Okay. Did you hear the question?
+>> Yeah. Yes sir. Our device is a portable
+device. We can use it any practical
+actual practical use. Where do you
+propose to situate it? Is it in the
+dairy or is it
+>> in the dairy?
+>> Okay. If it's in the dairy, there
+there's a problem. The problem is that
+suppose a cow has mastitis.
+>> Yeah.
+>> That cow's milk is supplied to the local
+society
+>> together with all other cows. It is
+mixed
+>> and the mixture is brought to the dairy.
+>> Yeah. Now if you test it you might find
+a positive but you have no clue where is
+it which cow it is coming from.
+>> Uh actually uh uh we are plan we are not
+implementing in such diaries we are
+giving the device uh where individual
+codes are treated like in each house a
+device should be there.
+>> Oh my that is overkill no to have a you
+know testing device like this. Okay. Uh
+then uh what are you that staining? What
+kind of staining are you using?
+>> Yeah, we are using uh
+>> uh uh I forgot the name actually. Uh
+>> is it gram staining?
+>> Normally straining is used to separate
+two kinds of bacteria, gram positive and
+gram negative. Uh actually we are using
+the staining uh to
+uh to uh remove the fat content of the
+milk.
+>> What stain has nothing to do with the
+fat content?
+>> Yeah. Uh and uh
+>> see the the concept behind staining is
+that there are two types of bacteria.
+One is a pathogens which actually cause
+disease. Other is the normal micrllora
+and you want to count the pathogens
+because they are the ones who are
+actually causing the disease. So
+staining allows us to separate the two
+into two categories. There are two dice
+used. Uh so
+after the the slide is dried you find
+the two colors in the output but you
+seem to be counting everything.
+Uh
+>> so what are you actually counting?
+>> We are counting the number of sematic
+cells.
+>> What is a sematic cell? Uh actually uh
+the number of sematic cells in a normal
+cow's milk is uh very lesser when
+compared to an affected cow.
+>> No, that is not a sematic cell. A
+sematic cell is a normal cell. If you're
+detecting
+early mastitis
+that should be shown by one particular
+type of cell. See mastitis is a genetic
+disease caused by a bunch of bacteria
+starting with straus orius and even
+e.coli sometimes is a pathogen. Now any
+technique that counts everything is of
+no use because even the purest of milk
+will have bacteria in it. That's not a
+bad thing. But if you have pathogens in
+milk, then you have a problem. So you
+ought to be actually counting the
+pathogens and not all cells. If you
+count all cells, you get a fairly
+meaningless number.
+So I'm not able to understand. Can you
+explain how it is?
+>> Yeah. Okay, sir. So in when when we were
+into this project we had a little uh
+study about this uh condition
+and in this study we were able to
+understand that uh when the cow is
+affected by mastis in his early stages
+uh
+uh the number of somatic cells in the
+milk increases. So rather than the which
+is seen in the normal cows so if you
+>> let's assume that's the case let's
+assume that's the case. uh and uh you
+are straining the the milk sample. So
+hopefully that will allow you to count
+all cells in the milk or is it only
+so-called somatic cells?
+>> Uh actually uh only somatic cells.
+>> How does that staining work? I've never
+heard of the staining that will only
+kind of stain one particular type of
+cell when there are actually a number of
+different types on the in the milk.
+Can you tell me what staining it is?
+Yeah sir. Actually we are using uh
+uh
+okay so uh forget it if you're not
+>> new stain. Sir what
+>> new man stain?
+>> What is the actual stain used?
+>> Newman stain.
+>> No that's that's the name of the
+technology. But what is the actual the
+color? Is it like myth violet or
+>> methyl blue?
+>> Yeah.
+>> Okay. So what what does that convey?
+What uh so you are saying that methile
+blue only colors malignant cells or what
+you call as
+somatic cells. So uh you are doing a
+count of that.
+>> Yeah. Yes sir. We are doing the count of
+somatics.
+>> So what does it indicate? Are you
+comparing with any standard saying that
+beyond this point it is suspected
+mastitis?
+>> Yeah. Yes sir. What is the threshold?
+Uh
+about two like
+two lakhs.
+>> Yes sir.
+>> Two lakhs per mill.
+>> Okay. So where in your program are you
+extrapolating from the count that you
+get from the the stained slide to this
+number because stain is not 1 ml stain
+is much less than that.
+>> So how will you check whether sorry
+>> uh we have only uh we have calibrated
+the milk dispensing unit to drop exactly
+1 ml
+>> 1 ml will run all over the slide. You
+don't need 1 m.
+>> 0.01 ml
+>> part of
+>> sorry
+>> 0.01 ml.
+>> Oh, 0.01 ml.
+>> Yeah. Okay.
+>> We have
+>> uh uh right. So u
+I also do not understand where you're
+testing the pH because according to you
+the pH is another indicator.
+>> Yeah. Okay sir. So we have used all pH
+as a parameter only in our first device
+and it was pretty unstable. uh the the
+pH meter which we have
+>> the device is unstable or the indicator
+is unstable.
+>> The indicator was unstable. So in the
+final model we decided to remove the pH
+and we have we developed our own custom
+conductivity sensor.
+>> But what have we given the idea that PH
+is an unstable indicator of anyway let's
+not go into that but PH is a well
+doumented indicator of early massis.
+>> Yeah sir but uh the one problem which we
+encountered was that the PS sensor
+needed to be calibrated. So it's a
+sensor problem not a pH problem.
+>> Yeah. Okay. Sorry sir.
+>> There are various ways of Anyway let's
+let's Okay. That so so you have ignored
+PH now and we only you're only
+concentrating on the the cells.
+>> Yes sir.
+>> Anyway I'll stop here. I have a bunch of
+other questions but I'll stop here and
+over to Bergis.
+Right.
+>> So you you said you use uh the YOLO V10
+U to measure the number of sematic cells
+right.
+Yes sir.
+>> Uh and you said you run that on a uh
+uh if I'm not mistaken a
+a small board. So uh what size is that
+model and how accurately does it run?
+Because uh you know I thought it would
+need a fairly high level of computation
+to to run. So how do you ensure that
+there is enough computing power to get
+the right answers?
+>> Yeah. Okay sir. So when we looked into
+the yellow model it has it had varieties
+of model like yolo b y
+we have particularly used yol model
+which is suitable for suitable to be
+implemented in raspberry play devices
+where resource is a constraint.
+>> So does that uh reduce the efficiency in
+in any way? What does study show? For
+example, if I run it in a, you know, in
+a cluster versus running it on a
+Raspberry Pi, what would be the accuracy
+differences?
+>> Yes, sir. The accuracy will be a bit
+less uh up to two to three percentage.
+>> But uh uh I think sir, we have only uh
+we have only used V10 model since we had
+to make it as a portable device. We have
+not used the other models to
+And uh uh to the question that was asked
+you know in terms of the counts how do
+you ensure that the the accuracy because
+at the end of the day uh everything that
+you do is based on the total number of
+count in a sense right.
+>> Yes sir. Uh so how do you ensure do do
+you have a human in the loop somewhere
+to kind of verify and validate uh you
+know the accuracy of the results? U
+how do you make sure that you are doing
+uh things right?
+Uh actually we have uh we have trained
+our model to predict the results right.
+So
+uh during the training process uh uh we
+can say that this is uh 91% accurate. So
+we can
+say that it is accurate.
+We don't actually need a human to
+>> okay so so what was the training? How so
+how much how many samples did you use in
+your brain?
+>> Actually we had 252 original samples
+we had done.
+>> Yeah. Yes sir. We have increased the
+sample to 3,000 by using various data
+processing methods.
+>> But that's synthetic data.
+>> Yeah. Yes sir. So uh the s authentic
+samples were very hard to find uh
+because uh we were unable to find uh it
+was very hard to find the cows which are
+having mastitities.
+So we had to take this much number of
+samples and we had to replicate that
+samples.
+>> Okay.
+Thank you. solution.
+>> Yeah. So, one last question. Uh I think
+personally, this is my personal uh
+opinion that you're putting too much of
+faith in your model. If you're saying
+that you will do a bunch of initial
+tests and then let the model continue
+without any supervision, which is what
+Bitiz was asking, uh that is very
+dangerous.
+>> Yeah,
+>> we always need to have some kind of a
+backup at least random checking or
+outlier checking. Outlier is when you
+have some samples which are very very
+very way very way very way very way very
+way very way very way very way very way
+very way very way very way very way very
+way very way very way very way very way
+very way very way very way very way high
+or way low then you need to go and check
+why it is so low or so high or random
+checking you you you choose random every
+day you choose some random samples and
+cross check otherwise the faith in only
+model at least the current phase of AI
+may be misplaced so that is a piece of
+advice that I can give you thanks for
+your presentation back to
+>> okay sir thank you sir for the advice I
+think it is a uh we have in thought 10
+minutes
+sure thank you thank you juror uh I
+think there's no more questions from
+anyone
+okay thank you team thank you for
+presenting u you can uh leave the
+meeting right now thank you uh thanks
+So I think uh
+yeah the team has left right?
+>> Okay.
+>> Uh just a minute. I think the other team
+is already here.
+>> Uh yeah you can just ask them to join
+the waiting room again. Uh it's not now
+here please.
+So
+the the next project
+uh is from
+yeah the next project is from
+Federal Institute of Science and
+Technology. Uh Akil Babu will be
+presenting their project titled Code
+Guard. Uh the project ID is
+uh IA 0282 0282.
+So thank you. I will be admitting that.
+Please hold on. Uh
+the team is joining. I have admitted
+them.
+>> I I add them but I think they will join
+for some reason.
+>> Yeah, they left again and I mean they
+are not joined here. Uh Susan, can you
+please coordinate with the
+>> Yeah, I'll call them up and ask them to
+join.
+>> Sure, please. Thank you.
+>> Actually, they were in the waiting room.
+Yeah, he's in the waiting room.
+Yeah, Akil Babu has joined. Uh good
+afternoon, Akil.
+I think you're on mute.
+Hello.
+Are you saying something? We cannot hear
+you right now.
+I think there is a network issue
+actually. Can you please try it again?
+Is it only for me or for others also? Uh
+what's this name?
+>> Yeah, I can't can't hear.
+>> Akil, we cannot hear you. Do you want to
+try again? Uh by leaving and joining
+again. Do you want to try that?
+Hello.
+>> Hello. Can you hear me?
+>> Yeah, now it's clear. Yeah.
+>> Oh, okay.
+>> So, uh we have the jury here. You can
+start your project presentation. You'll
+be having 12 minutes to present. 10
+after 10 minutes, you'll be given a
+warning. And after the 12 minutes are
+up, uh it will be open for Q&A. Are you
+good to go?
+>> Yeah, I think your voice is again
+I think uh your voice I mean there's a
+network issue there. Your voice is
+breaking up.
+Hello. Happy
+does anybody else
+uh on your team wants to take over?
+>> Hello. Can you hear me?
+>> Yeah. No, it's okay. Yeah, it's
+>> Oh, okay. Thank you. I'm the only person
+in my team.
+>> Sure. Sure. Yeah, you can start
+presentations. Thank you. Thank you, J.
+>> Thank you.
+>> Actually, uh if there's a network issue,
+uh you can turn off your video to
+preserve the bandwidth. It's okay.
+>> Oh, okay. Yeah.
+One second.
+Can you show my can you see my slides?
+>> No. Yeah, now it's Yeah, now we can see
+your slides. I can see.
+>> Okay. So, good morning sir. My name is
+Akil Babui MK. I'm completing my B
+computer science and engineering at FISA
+with a CGP of 8.92 and also an
+undergraduate research in cognitive
+computing research center. So let me
+know let me explain project. So imagine
+this scenario it's 3:00 a.m. your
+application is live and serving
+thousands of users and suddenly you
+discover that in a single line of
+vulnerable code has exposed 147 million
+user records just like what happened to
+Echifax in 2017. a simple XQL injection
+that could have been caught and
+automatically before deployment.
+So there are multiple real world
+examples for these types of attacks like
+Tik Tok excss attacks in 2020 and
+British airway data breach in 2018 and
+if as I said earlier Equifax SQL
+injection attack in 2017. So software
+applications are frequently targeting of
+such vulnerabilities like SQL XSS ACS
+and many different types of
+vulnerabilities. So our main problem
+statement is despite the rising number
+of security breaches, developers
+struggle to secure their codebase due to
+manual security audits are slow and
+expensive and make it hard for
+developers to find and fix vulnerability
+in time and security audits are often
+conducted after their project completion
+or even post deployment make it
+difficult and expensive to identify and
+fix vulnerabilities. So attackers
+exploit security gaps faster than they
+are patched or increasing risk. And
+another problem is that traditional
+security rules lack automation recurring
+expert intervention also. So what we are
+need is that a fully automated AI
+powered security solution to detect fix
+and integrate secure direct into the
+development workflow.
+So today I'm here to present code guard
+an A powered security guardian that
+ensure the these types of night
+nightmare never become your reality. So
+our objective is to develop an advanced
+vulnerability detection tool which can
+able to catch OB's top 10 vulner
+vulnerabilities with rule tained
+analysis and along with machine learning
+process and along with that a smart
+patching like fix flows instantly using
+a generated patches from LMS and we can
+able to integrate GitHub so that we can
+able to import and scan real time
+through GitHub projects and we
+integrated CI for continuous integration
+for the pull and pull push request.
+So our codec cat is a cutting edge
+security platform to enhance codebased
+protection through intelligent
+vulnerability detection and AIdriven
+remediation. The system integrates
+seamlessly with the GitHub allowing user
+to scan code bases for critical
+vulnerabilities including OBS stop and
+risk like XSS and escalation. As I said
+earlier, coders employs an hybrid
+approach, an advanced sd also known as
+static application security tool
+developed in house that combine tainted
+analysis of abstract syntax nodes like a
+source to train sync tracking with a
+rulebased detection. For further
+improvement of accuracy, a word plus
+LSTM model is developed to develop
+detectabilities. Upon identifying these
+types of vulnerabilities, the platform
+leverages a large language model to
+generate precise context away patches
+and enable one-click fix with automated
+GitHub commits. Additionally, code
+integrated CI pipeline to scan code
+changes during the p push and pull
+request flagging vulnerability in real
+time by seamlessly integrating advanced
+detection automation remediation.
+Codegard empower developers check the
+codebase efficiently. So during the
+development cycle of this project, we
+are achieved four different things. So
+as I said as we know that to develop
+such a production ready application we
+need a realtime data set to develop an
+LSTM based machine learning model. So I
+go through every data set that are
+available for in the internet. But I
+identify that uh they are not ready for
+production ready or production level or
+they are just snippet of these types of
+we cannot able to accurately predict
+these types of these types of data. For
+for that we developed a comprehensive
+data data set from GitHub and proudly we
+can say that from online available data
+set our data set is biggest size in size
+and production ready format. And
+secondly our excss model implemented
+achieve comparable accuracy with a
+significant enhance processing speed
+compared to the latest paper in result
+in engineering science network. And also
+we know that for a classification model
+we can only say whether a file or
+whether a code has vulnerability or not.
+We cannot able to pinpoint the location
+of the vulnerability where it actually
+there and what type of vulnerability is
+that for that we developed a method
+capable of pinpointing the vulnerability
+location using machine learning and able
+to productize it also. So this is
+basically the architecture of our work.
+So when a user come to our platform we
+authorize with the GitHub application
+then he can see different different
+projects that are available in GitHub.
+Then after he select one of the GitHub
+application that he need to scan for
+these types of vulnerabilities. He can
+configure whether he want ML or not.
+Then after that we need send it to an
+analy engineer. In the analy engineer we
+said we already set a SAS plus machine
+learning powered engineer there. we can
+able to combinely process the code and
+generate a detailed sif report about our
+vulnerabilities in a codebase and this
+sif report and along with the code we
+send it into large language model to
+efficiently identify and fix those
+vulnerabilities. So, LLM can able to
+understand effectively and generate g
+like uh
+def like uh code like before the
+vulnerability and after the
+vulnerability and the developers can
+able to see these types of uh able to
+compare this uh change able to
+push these changes indirectly to the
+GitHub and also you can you don't want
+to come to a platform and endly scan the
+project and uh fix this penalty. You can
+able to uh so suppose you you have a
+project and you just uh pushing
+something into the GitHub. We set a CI
+and a GitHub action where a project
+model is there you can directly or it
+will trigger automatically when a push
+happen
+that there is an issue
+user can able to know what type of
+vulnerability there and fix it.
+You might want to switch off your uh
+video because uh you're breaking up.
+>> One second.
+One second.
+>> Yeah.
+Hello. Can you hear me? Yeah.
+Okay.
+line. Then
+after that uh this is can I show the
+video of my project then then can I show
+explain what is happening inside the uh
+SSD and machine learning model which you
+prefer?
+>> Sure. Sure. Yeah.
+>> Video sir.
+>> Yeah. Go ahead.
+>> Can you show see the video sir?
+>> Okay. No, you are steering the uh
+presentation stage. Yes sir.
+>> Okay. Thank you.
+>> Uh I have a suggestion for you sir. Uh I
+think we can also go on video mute so
+that uh it will save his band download.
+>> Okay. How can I do this?
+>> Uh yeah till you can please proceed.
+>> Okay.
+So can you see that?
+>> Yes, please. Your browser window is
+open.
+>> Okay.
+>> Hi everyone. Welcome.
+>> Is it playing sir?
+>> Yes. Yes. Please proceed.
+>> Smart security platform that protects
+your code.
+>> The volume is a little low. Can you
+please increase the volume? No. Okay.
+features, the problem it solves, its
+architecture, and a quick demo of how it
+works. Let's get started.
+As developers, we face a big challenge.
+Keeping our code safe from attacks like
+cross-sight scripting and SQL injection.
+These vulnerabilities can lead to data
+breaches or financial losses. Manual
+code.
+>> I will just skip for this. I already
+explained these things. I will just
+skip. checks abilities. Git uses a custo
+structure design with a ReactJS front
+end for a smooth user experience and a
+flask back end for handling requests.
+The system connects to GitHub via AP
+generates. Now let's connect to GitHub
+button to start. In this demo, you'll
+see how it works step by step. Homepage.
+This is the code guard homepage. It's
+clean and simple with a connect to
+GitHub button to start. The page
+highlights features like advanced
+security and real-time scanning. GitHub
+login. Here we log in using GitHub OT.
+It's secure and quick linking your
+repositories to CodeGuard. Repository
+selection. Once logged in, you see your
+GitHub repositories. We'll pick one to
+scan for vulnerabilities. Scanning
+process. Code guard starts scanning the
+code. It uses the SAS tool and machine
+learning models to check for issues like
+XSS or SQL injection. This takes just a
+few seconds.
+Results view. Here's the result. Code
+guard lists any vulnerabilities found
+like an unsafe input in a JavaScript
+file. It shows the exact line and
+explains the issue clearly. Fix
+suggestions. For each issue, code guard
+suggests a fix like adding input
+sanitization.
+You can review the suggestion and apply
+it with one click which creates a commit
+in your repository.
+CI/CD integration. Finally, we see
+CodeGuard working with a pull request.
+It scans new code changes and flags any
+issues, keeping your project secure as
+you work.
+It makes securing your code simple,
+fast, and smart. By combining advanced
+detection, AI fixes, and GitHub
+integration, it helps developers stay
+one step ahead of vulnerabilities.
+Thanks for watching and try CodeGuard to
+protect your projects today.
+>> Hello, sir. Can you hear me?
+Yes.
+>> Uh can I complete uh repeat uh resume my
+pres presentation?
+>> Yeah, go ahead.
+So,
+so this is the ST working uh actually.
+So basically uh what we doing is that
+you actually taking the source code and
+completely converted into a using some
+uh tree like modules and it can able to
+completely passing like this right side
+format. Then after that uh first first
+as a first stage we are performing like
+a rule loading and compilation. So we
+have a set of rules like uh as I said
+there is a source in in there is a
+source. So this is actually where the uh
+the vulnerable code which were the the
+vulnerability code that enter into the
+file program and sync is where the
+vulnerability will be executed. So
+between the file path which we know that
+we know that this this is the tainted
+path. So we have set of source and sync
+and set of rules are there and based on
+the rules we the rules are also compiled
+into a specific format. Then after that
+basic pattern matching process will be
+conducted as a initial process. For
+example, eval of dollar X we will
+convert it into A and also the code will
+be also convert as and basically a
+pattern matching will be happen and if
+there is some vulnerability found we can
+say that there is a vulnerability there
+but this is the most of the a will be
+like role based loading is happening for
+enhancing further we are using a tain
+analysis flow also there which means
+there's a we are first of all collecting
+source uh we are identifying the source
+then
+so here in the code request to get of
+username here's the source and it will
+send it to a user input and select start
+from user it will send it to a query
+then after that the query will be
+executed in a db.execute execute. So in
+between the flow there is no signation
+happening in between the user input. So
+that we can ensure that sometimes some
+user can maliciously send some request
+and able to execute in a a DB or some
+database part so it will make vulnerable
+and talent sometimes happen in some
+codes. So we can see that scient of user
+input in between the scient we cannot
+want to we don't want to project it as a
+vulnerability. So here is also handled
+this by. So this is basically what
+happened inside a SAS based part. Then
+in order to increase the accuracy of
+this uh prediction we enhanced it with
+your to plus LSTM. First of all, we
+collected large code base from uh GitHub
+and trained a word model so that we can
+able to generate vectors semantically.
+Meaning after that we trained an LSD
+model uh so expand code ML capability
+and use word to embed code token into
+semantic vector space and apply LSTM to
+analyze the token sequence and classify
+vulnerability in a fine grain tokens.
+But one of the problem that I said
+earlier is that LSTM can only predict
+whether it has vulnerability or not just
+a probability for an entire file. We
+need to have a specific uh line where
+the vulnerability are exist actually.
+For that we developed a a method like uh
+like a context window or a sliding
+window approach.
+One second. So this
+vector vector uh the tokens and send it
+to LSTM. Then after that uh we we will
+classify whether it has a vulnerability
+or not to be predicting the probability.
+Sir can you hear me?
+Yes.
+>> Okay. So, uh I will show you how uh
+actually the sliding window sliding
+window approach work. So, we one second
+I will show you uh stop sharing the
+screen.
+>> Uh just a moment I'm really sorry to
+interrupt. Uh
+and pu with your permission we can uh go
+ahead. Uh the time has been wrapped up.
+>> Yeah. I would suggest if you can wrap up
+uh probably in a minute or so. Okay.
+>> Oh okay sir I will I will. So uh the
+context window is working like that.
+Okay I will I will explain. Okay. Uh
+there is a five uh token like or window
+is there. Then window will be go through
+each and each and every line of the code
+and and there is a focus uh token is
+also there and able based on the focus
+token and the context window it can able
+to predict whether there is
+vulnerability exist in that line or also
+so that it's a one step moving window so
+that we can able to uh capture whether
+capture the meaning also from from the
+LSTM model. So again this is the result
+of the LSTM plus LSTM like left side you
+can see the GitHub uh code
+Please share your screen again.
+>> Oh, one second, sir.
+>> Sir, you can see right?
+>> You can go ahead. Thank you.
+>> Okay. So, this is the result of uh our
+prediction. Left side you can see the
+GitHub uh uh file which has access
+vulnerability and our model predict the
+red red mark as uh these lines have the
+excess vulnerability and other green
+shows this there is no vulnerability and
+the comment shows like the gray color.
+So this is the enhanced architecture of
+the LLM and we are also trained
+specifically for access vulnerability
+for CN plus LSD architecture and uh this
+is working behind that. So finetuning is
+with octunal workflow for identifying
+the parameters efficiently. This is the
+uh accuracy table and everything. So I
+can skip okay this is what we have seen
+uh the project video. This is
+abstraction basic uh diagram and uh
+basically initial we just looking for
+LLM only based analysis but the accuracy
+is not that correct. This is based but
+they can able to predict it but okay but
+we need to have something tool has
+there. So this is the initial stud data
+set. So this is that code achieve
+application security through it
+integration of custom sd machine
+learning detection and web stop and
+vulnerabilities the implementation based
+pattern matching combined with LSTM
+neural network deliver superior
+vulnerability detection accuracy while
+reducing fall positive event. So thank
+you sir.
+>> Thank you. Uh over to the judges.
+>> I think there are already a lot of tools
+including the copinets the cursors of
+the world that do this. So what makes
+yours very different and very unique? So
+as a SAS application like SE grip code
+SR like tools they just set of they
+making a database and there are lots of
+CVV are there inside the database so
+these are not completely able to predict
+whether uh these types of vulnerability
+sometimes some new vulnerabilities are
+there every time a new CVP is
+identifying there also so they can all
+they can predict pretty well but don't
+don't they cannot able to efficiently
+predict it and also they are a separate
+tool and they cannot able to integrate
+directly to a complete web project or
+during these types of uh actual
+development workflow and code one of the
+GitHub
+vulnerability detection tool and
+actually they are right now actually
+implementing machine learning behind the
+uh vulnerability detection actually they
+are also create a query language like QL
+quer language inside codebase and they
+have developed a large code base for
+identifying vulnerabilities and they are
+right now actually implementing these
+types of machine learning s so I think
+our tool can able to predict machine
+learning accurately through machine
+learning model accurately well performed
+and for the prototype and everything uh
+I think it's a better one that's
+>> see there are two types of tools right
+there are the SAS tools and the high-end
+ones like snake vera code All of that
+are are very very very standard tools in
+in in large enterprises.
+>> That's on one side. Then you also can
+club it with you know tools like for
+example sonar cube which also finds
+vulnerabilities and helps specifically
+where the vulnerabilities what's the
+vulnerability and and so on.
+>> And then you have the copilots of the
+world which also does a lot of this that
+you're talking about
+>> but they are not providing actual fixes
+right now to project. they are they are
+copilot will give you exactly where what
+fix and where
+>> I think copilot is not uh trained for
+this identifying uh these types of
+complete vulnerabil
+review module that does that so that is
+why I'm I'm I'm kind of still confused
+as to where this fits in um that's fine
+u satish
+So this if you're speaking you're on
+mute.
+>> Okay. By the time Satish uh you know
+reconnects see one of the big challenges
+with a large code base is the number of
+tokens.
+>> Yes.
+>> Most LLMs
+get uh you know very very very uh I
+would say you know confused when the
+number of tokens increases.
+>> Yes,
+>> there are very few LLMs that can manage
+large number of tokens. So when you're
+giving it a large project, small
+projects works fine.
+>> But when you're giving it large
+projects,
+>> what do you think would become the
+challenge? One is the cost obviously,
+but what is
+>> so the challenge?
+>> How do you kind of manage that? Because
+in most organizations that is a big
+challenge. So the part is that uh
+initial process is like SAS plus machine
+learning based vulnerability detection.
+So once this process is completed we
+generating a comprehensive sif report.
+So they can so in the sif report
+actually the severity level and uh the
+like uh the where the file which file
+and which line which code part has the
+psycho vulnerabilities and everything.
+So basically we know where and which all
+are the files that have these type of
+vulnerability. So we don't need to
+provide the llm have the complete uh
+code for for the uh context we just need
+to provide the files and the
+corresponding dependency files and uh
+the relationship also so that we can
+able to reduces the number of tokens and
+also if we can able to further increase
+the accuracy by creating a knowledge
+graph. So basically the complete code
+base will be converted into knowledge
+graph they can able to track uh the
+graph through which all are the files
+and what are the dependencies and exist
+there. So it's not implemented in
+knowledge implemented we are logically
+thinking about that how to create a
+knowledge efficiently so that we can
+reduce we can make the llm understand
+effectively what the code base and
+everything else.
+>> Yeah. So this is Satish um
+like Vis points out I don't see any need
+for such a tool because coding uh and
+ids and code review and plugins have
+been around for 20 plus years. The OASP
+top 10 has been around for about 15 to
+20 years. There have been so many uh
+tools that programmers have been using
+over the last 20 years that does exactly
+uh you know pull pull the rules from uh
+maybe O was for other sources or even
+your company sources for additional
+security and then run code reviews for
+every line of code
+that is happening. It has been happening
+for the last 20 years at least. So why
+do you want to bother with an LLM for
+this?
+>> Hello.
+>> Yep.
+>> Uh can you please repeat the last
+question?
+>> No, I was saying that I don't see any
+need for this. The the programmers uh
+No, I started programming in about about
+30 years back.
+>> Okay.
+>> So from then OAS was around it was an
+open source bunch of you know
+vulnerabilities. It has been around for
+15 plus years at least.
+>> Mhm.
+>> And people have been coding all this
+while they haven't needed any LLM to
+kind of scan through these things and
+you know do a code review on every line
+of code. Sanitization of code you not
+mentioned sanitization. It's a very
+important step. You know
+>> you already said about the stat
+sanitization is happening. The LLM able
+to generate the sanitization.
+>> LM is not required for that. Programs
+have been doing sanitization for ages.
+So You are proposing a very complicated
+solution for a simple problem which has
+been you know solved by engineers by
+coders developers all these years. So it
+gives the impression it may not be
+intentional but it gives the impression
+that you somehow want to bring in AI
+into this whereas it is actually not
+required. AI is not required for this
+particular exercise because we have been
+doing the same thing without AI for the
+last so many years.
+>> Yes sir. for a large enterprise
+sometimes it's not need sir but as we
+know that
+>> I'm talking about open source
+programmers one person programming
+>> oh okay
+>> that person can do it without any AI you
+doesn't have a time to bring in
+>> for a large enterprise application
+applications how you can able to manage
+for manual intervention every time so
+it's very difficult right without an
+automated tool
+>> no there is no this is automatic a
+plug-in a VS code or a net beans plugin
+For this purpose you just plug, you just
+download install it and then it'll flag
+as you as you code it will flag you know
+what is red and what is yellow and so
+on.
+>> Still they using SAS with applications
+they are not using any L.
+>> No this is not SAS this is a plug local
+plug-in
+will be able to kind of provide more
+details on that but I'm just saying that
+you know programmers have been doing
+this without any language models for so
+many years. No, there are places where
+language models are useful, but this is
+not one of them as far as I can make up.
+What do you think?
+>> Yeah, that's that was my point as well
+for many. If you look at copilot,
+copilot has a code review module uh that
+actually uses a lot of this uh including
+uh you know the next best answer uh you
+can you'll get vulnerabilities uh you
+know online and all of that. So you know
+even if you want to go there there are
+tools there but to your point Satish yes
+you know there are SAS tools there are
+dash tools uh that does a lot of this
+today which without any AI at all uh
+maybe some have machine learning built
+in but they all work and there are
+plugins uh into the uh IDE so uh you
+know it's it's all integrated and there
+are open source tools as well
+um So it's it's not that uh it's you
+know so I think you need to really
+identify where the difference is because
+right now that doesn't seem to be coming
+through a
+>> right uh so uh it's a good attempt but
+you have to precisely uh you know
+demonstrate without AI this would not
+have been possible and with this AI it
+is possible. If such a kind of a thing
+is there then it'll be clearer for us to
+judge. So thanks very much and back to
+you.
+>> Thank you judges. Uh thank you for
+joining today. Uh you can please leave
+this meeting. Thank you.
+>> Okay.
+>> And uh Subin if you're online can you
+please stop the YouTube live streaming
+also and please confirm here. Yeah.
+Yeah. So what?

@@ -1,8 +1,21 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { SessionState, ConversationTurn, QueryParams } from "@/lib/types";
-import { ingestDocuments, getDemoScenarios, loadDemoScenario } from "@/lib/api";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
+import {
+  SessionState,
+  ConversationTurn,
+  QueryParams,
+} from "@/lib/types";
+import {
+  ingestDocuments,
+  getDemoScenarios,
+  loadDemoScenario,
+} from "@/lib/api";
 import {
   ArrowUp,
   FileText,
@@ -18,7 +31,10 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Database,
 } from "lucide-react";
+
+import MemoryPanel from "@/components/visualization/MemoryPanel";
 
 const BASE = "http://localhost:8000";
 
@@ -42,18 +58,38 @@ function DocIcon({
   const cls = "shrink-0";
 
   if (ext === "pdf") {
-    return <FileText size={size} className={`${cls} text-red-400`} />;
+    return (
+      <FileText
+        size={size}
+        className={`${cls} text-red-400`}
+      />
+    );
   }
 
   if (ext === "docx" || ext === "doc") {
-    return <FileText size={size} className={`${cls} text-blue-400`} />;
+    return (
+      <FileText
+        size={size}
+        className={`${cls} text-blue-400`}
+      />
+    );
   }
 
   if (ext === "md") {
-    return <Hash size={size} className={`${cls} text-purple-400`} />;
+    return (
+      <Hash
+        size={size}
+        className={`${cls} text-purple-400`}
+      />
+    );
   }
 
-  return <File size={size} className={`${cls} text-slate-400`} />;
+  return (
+    <File
+      size={size}
+      className={`${cls} text-slate-400`}
+    />
+  );
 }
 
 // ─── Turn Card ───────────────────────────────────────────────────────────────
@@ -64,7 +100,9 @@ function TurnCard({
   turn: ConversationTurn;
   isLast: boolean;
 }) {
-  const [selectedSource, setSelectedSource] = useState<number | null>(null);
+  const [selectedSource, setSelectedSource] = useState<
+    number | null
+  >(null);
 
   return (
     <div className="flex w-full flex-col gap-4 animate-fade-in">
@@ -75,28 +113,36 @@ function TurnCard({
             {turn.query}
           </p>
 
-          {turn.resolvedQuery && turn.resolvedQuery !== turn.query && (
-            <p className="mt-1 font-sans text-xs italic text-zinc-500">
-              ↳ {turn.resolvedQuery}
-            </p>
-          )}
+          {turn.resolvedQuery &&
+            turn.resolvedQuery !== turn.query && (
+              <p className="mt-1 font-sans text-xs italic text-zinc-500">
+                ↳ {turn.resolvedQuery}
+              </p>
+            )}
         </div>
       </div>
 
       {/* Assistant response */}
-      {(turn.answer || turn.isStreaming || turn.isRetrieving) && (
+      {(turn.answer ||
+        turn.isStreaming ||
+        turn.isRetrieving) && (
         <div className="flex w-full items-start gap-4">
           <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center">
             <div className="eviot-blob" />
           </div>
 
           <div className="flex-1 space-y-4">
-            {turn.isRetrieving && turn.contextSteps.length === 0 ? (
+            {turn.isRetrieving &&
+            turn.contextSteps.length === 0 ? (
               <div className="flex items-center gap-2 py-2 text-xs text-text-secondary">
-                <Loader2 size={12} className="animate-spin text-accent" />
+                <Loader2
+                  size={12}
+                  className="animate-spin text-accent"
+                />
 
                 <span>
-                  Retrieving context chunks using Optimal Transport...
+                  Retrieving context chunks using Optimal
+                  Transport...
                 </span>
               </div>
             ) : (
@@ -125,44 +171,49 @@ function TurnCard({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {turn.contextSteps.map((step, idx) => {
-                        const docName =
-                          step.source_doc.split("/").pop() ||
-                          step.source_doc;
+                      {turn.contextSteps.map(
+                        (step, idx) => {
+                          const docName =
+                            step.source_doc
+                              .split("/")
+                              .pop() || step.source_doc;
 
-                        const shortName =
-                          docName.length > 20
-                            ? `${docName.slice(0, 18)}...`
-                            : docName;
+                          const shortName =
+                            docName.length > 20
+                              ? `${docName.slice(0, 18)}...`
+                              : docName;
 
-                        const isSelected = selectedSource === idx;
+                          const isSelected =
+                            selectedSource === idx;
 
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() =>
-                              setSelectedSource(
-                                isSelected ? null : idx,
-                              )
-                            }
-                            className={`flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all hover:border-accent hover:bg-surface-3 hover:text-text-primary ${
-                              isSelected
-                                ? "border-accent bg-surface-2 text-text-primary"
-                                : "border-border-default bg-surface-2 text-text-secondary"
-                            }`}
-                          >
-                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
-                              {idx + 1}
-                            </span>
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() =>
+                                setSelectedSource(
+                                  isSelected ? null : idx,
+                                )
+                              }
+                              className={`flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all hover:border-accent hover:bg-surface-3 hover:text-text-primary ${
+                                isSelected
+                                  ? "border-accent bg-surface-2 text-text-primary"
+                                  : "border-border-default bg-surface-2 text-text-secondary"
+                              }`}
+                            >
+                              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
+                                {idx + 1}
+                              </span>
 
-                            <span>{shortName}</span>
+                              <span>{shortName}</span>
 
-                            <span className="text-text-tertiary">
-                              p.{step.source_line}
-                            </span>
-                          </button>
-                        );
-                      })}
+                              <span className="text-text-tertiary">
+                                p.{step.source_line}
+                              </span>
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
 
                     {selectedSource !== null &&
@@ -171,25 +222,28 @@ function TurnCard({
                           <div className="mb-2 flex items-center justify-between border-b border-border-default pb-1.5 font-mono text-[10px] text-text-secondary">
                             <span className="truncate text-accent">
                               {
-                                turn.contextSteps[selectedSource]
-                                  .source_doc
+                                turn.contextSteps[
+                                  selectedSource
+                                ].source_doc
                               }{" "}
                               (p.{" "}
                               {
-                                turn.contextSteps[selectedSource]
-                                  .source_line
+                                turn.contextSteps[
+                                  selectedSource
+                                ].source_line
                               }
                               )
                             </span>
                           </div>
 
                           <p className="italic text-text-body">
-                            "
+                            &quot;
                             {
-                              turn.contextSteps[selectedSource]
-                                .sentence_text
+                              turn.contextSteps[
+                                selectedSource
+                              ].sentence_text
                             }
-                            "
+                            &quot;
                           </p>
                         </div>
                       )}
@@ -217,9 +271,13 @@ function Sidebar({
   onNewSession: () => void;
   isSidebarOpen: boolean;
 }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [scenarios, setScenarios] = useState<any[]>([]);
-  const [loadingDemo, setLoadingDemo] = useState(false);
+  const [isUploading, setIsUploading] =
+    useState(false);
+  const [scenarios, setScenarios] = useState<any[]>(
+    [],
+  );
+  const [loadingDemo, setLoadingDemo] =
+    useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -250,7 +308,9 @@ function Sidebar({
       });
     } catch (e) {
       console.error("Sidebar upload failed:", e);
-      alert("Upload failed. Ensure the backend is running.");
+      alert(
+        "Upload failed. Ensure the backend is running.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -276,7 +336,7 @@ function Sidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col border-r border-white/[0.055] bg-[#1c1c1c] transition-[width] duration-200 ease-out ${
+      className={`flex h-full shrink-0 flex-col border-r border-white/[0.055] bg-[#181818] transition-[width] duration-200 ease-out ${
         isSidebarOpen ? "w-[260px]" : "w-[56px]"
       }`}
     >
@@ -318,6 +378,7 @@ function Sidebar({
         }
       >
         <button
+          type="button"
           onClick={onNewSession}
           title="New Session"
           className={`group flex items-center text-[#ececec] transition-colors hover:bg-[#2a2a2a] ${
@@ -384,6 +445,7 @@ function Sidebar({
             ))}
 
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               disabled={isUploading}
               title="Add Documents"
@@ -448,6 +510,7 @@ function Sidebar({
             {scenarios.map((sc) => (
               <button
                 key={sc.id}
+                type="button"
                 onClick={() => handleLoadDemo(sc)}
                 disabled={loadingDemo}
                 title={sc.title}
@@ -483,6 +546,7 @@ function Sidebar({
         }
       >
         <button
+          type="button"
           title="Settings"
           className={`flex h-10 items-center text-[#a7a7a7] transition-colors hover:bg-[#242424] hover:text-[#ececec] ${
             isSidebarOpen
@@ -515,27 +579,80 @@ function InputBar({
   disabled,
   placeholder,
   attachedFiles,
+  onRemoveFile,
 }: {
   onSend: (text: string) => void;
-  onFileAttach: (files: File[]) => void | Promise<void>;
+  onFileAttach: (
+    files: File[],
+  ) => void | Promise<void>;
   disabled: boolean;
   placeholder: string;
   attachedFiles: File[];
+  onRemoveFile: (index: number) => void;
 }) {
   const [text, setText] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [isMultiline, setIsMultiline] =
+    useState(false);
 
-  /*
-   * Files upload immediately when selected.
-   * Therefore only actual prompt text should enable Send.
-   */
-  const canSend = text.trim().length > 0 && !disabled;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const textareaRef =
+    useRef<HTMLTextAreaElement>(null);
+
+  const hasContent =
+    text.trim().length > 0 ||
+    attachedFiles.length > 0;
+
+  const resizeTextarea = useCallback(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) return;
+
+    const singleLineHeight = 28;
+    const maxHeight = 200;
+
+    /*
+     * Reset to one line first. This allows the textarea
+     * to shrink correctly when text is deleted.
+     */
+    textarea.style.height = `${singleLineHeight}px`;
+
+    const contentHeight = textarea.scrollHeight;
+
+    const nextHeight = Math.min(
+      Math.max(contentHeight, singleLineHeight),
+      maxHeight,
+    );
+
+    textarea.style.height = `${nextHeight}px`;
+
+    textarea.style.overflowY =
+      contentHeight > maxHeight ? "auto" : "hidden";
+
+    setIsMultiline(nextHeight > singleLineHeight);
+  }, []);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [text, resizeTextarea]);
+
+  const resetTextarea = useCallback(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) return;
+
+    textarea.style.height = "28px";
+    textarea.style.overflowY = "hidden";
+
+    setIsMultiline(false);
+  }, []);
 
   const handleSend = () => {
-    if (!canSend) return;
+    if (!text.trim() || disabled) return;
 
     onSend(text.trim());
     setText("");
+
+    requestAnimationFrame(resetTextarea);
   };
 
   const handleKey = (
@@ -549,7 +666,7 @@ function InputBar({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {/* Files currently uploading */}
+      {/* Attached files */}
       {attachedFiles.length > 0 && (
         <div className="mb-1 flex flex-wrap gap-1.5 animate-fade-in">
           {attachedFiles.map((file, index) => (
@@ -557,11 +674,6 @@ function InputBar({
               key={`${file.name}-${index}`}
               className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#212121] px-2.5 py-1"
             >
-              <Loader2
-                size={11}
-                className="animate-spin text-[#9b9b9b]"
-              />
-
               <DocIcon
                 filename={file.name}
                 size={11}
@@ -570,26 +682,35 @@ function InputBar({
               <span className="max-w-[140px] truncate text-xs text-[#d4d4d4]">
                 {file.name}
               </span>
+
+              <button
+                type="button"
+                onClick={() => onRemoveFile(index)}
+                className="ml-0.5 text-[#8e8e8e] transition-colors hover:text-white"
+              >
+                <X size={11} />
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Composer */}
+      {/* Auto-growing composer */}
       <div
-        className="
+        className={`
           flex
           min-h-[72px]
           w-full
-          items-center
           rounded-[36px]
           bg-[#212121]
           px-3
+          py-3
           shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_6px_24px_rgba(0,0,0,0.18)]
           transition-colors
           duration-200
           focus-within:bg-[#242424]
-        "
+          ${isMultiline ? "items-end" : "items-center"}
+        `}
       >
         <input
           ref={fileRef}
@@ -602,7 +723,10 @@ function InputBar({
               e.target.files || [],
             );
 
-            void onFileAttach(files);
+            if (files.length > 0) {
+              void onFileAttach(files);
+            }
+
             e.target.value = "";
           }}
         />
@@ -615,8 +739,8 @@ function InputBar({
           title="Attach files"
           className="
             flex
-            h-11
-            w-11
+            h-12
+            w-12
             shrink-0
             items-center
             justify-center
@@ -625,32 +749,32 @@ function InputBar({
             transition-colors
             hover:bg-white/[0.08]
             disabled:cursor-not-allowed
-            disabled:opacity-40
+            disabled:opacity-50
           "
         >
-          <Plus
-            size={28}
-            strokeWidth={1.6}
-          />
+          <Plus size={28} strokeWidth={1.6} />
         </button>
 
-        {/* Prompt textarea */}
+        {/* Auto-growing prompt textarea */}
         <textarea
+          ref={textareaRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+          }}
           onKeyDown={handleKey}
           disabled={disabled}
           placeholder={placeholder}
           rows={1}
           className="
-            max-h-36
             min-h-[28px]
+            max-h-[200px]
             flex-1
             resize-none
-            overflow-y-auto
+            overflow-y-hidden
             bg-transparent
             px-2
-            py-1
+            py-0
             text-[16px]
             leading-7
             text-[#f2f2f2]
@@ -660,19 +784,20 @@ function InputBar({
             custom-scrollbar
           "
           style={{
-            scrollbarWidth: "thin",
+            height: "28px",
           }}
         />
 
         {/* Send button */}
         <button
+          type="button"
           onClick={handleSend}
-          disabled={!canSend}
+          disabled={disabled || !text.trim()}
           title="Send prompt"
           className={`ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-all duration-150 ${
-            canSend
-              ? "bg-white text-black hover:scale-[1.03] hover:bg-[#e8e8e8]"
-              : "bg-[#3a3a3a] text-[#777777]"
+            disabled || !text.trim()
+              ? "bg-[#3a3a3a] text-[#777777]"
+              : "bg-white text-black hover:scale-[1.03] hover:bg-[#e8e8e8]"
           }`}
         >
           <ArrowUp
@@ -683,7 +808,8 @@ function InputBar({
       </div>
 
       <p className="text-center text-[11px] text-text-tertiary">
-        Eviot is AI and can make mistakes. Please double-check responses.
+        Eviot is AI and can make mistakes. Please
+        double-check responses.
       </p>
     </div>
   );
@@ -697,12 +823,16 @@ function EmptyState({
   disabled,
   hasSession,
   attachedFiles,
+  onRemoveFile,
 }: {
   onSend: (text: string) => void;
-  onFileAttach: (files: File[]) => void | Promise<void>;
+  onFileAttach: (
+    files: File[],
+  ) => void | Promise<void>;
   disabled: boolean;
   hasSession: boolean;
   attachedFiles: File[];
+  onRemoveFile: (index: number) => void;
 }) {
   return (
     <div className="flex flex-1 items-center justify-center">
@@ -713,8 +843,8 @@ function EmptyState({
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-text-secondary">
-            Upload any document to get started, then ask questions about it
-            below.
+            Upload any document to get started, then ask
+            questions about it below.
           </p>
         </div>
 
@@ -730,6 +860,7 @@ function EmptyState({
                 : "Upload memory to get started..."
           }
           attachedFiles={attachedFiles}
+          onRemoveFile={onRemoveFile}
         />
       </div>
     </div>
@@ -739,16 +870,29 @@ function EmptyState({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [session, setSession] = useState<SessionState>({
-    sessionId: null,
-    documents: [],
-    totalSentences: 0,
-  });
+  const [session, setSession] =
+    useState<SessionState>({
+      sessionId: null,
+      documents: [],
+      totalSentences: 0,
+    });
 
-  const [turns, setTurns] = useState<ConversationTurn[]>([]);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [turns, setTurns] = useState<
+    ConversationTurn[]
+  >([]);
+
+  const [pendingFiles, setPendingFiles] = useState<
+    File[]
+  >([]);
+
+  const [isProcessing, setIsProcessing] =
+    useState(false);
+
+  const [isSidebarOpen, setIsSidebarOpen] =
+    useState(true);
+
+  const [isMemoryOpen, setIsMemoryOpen] = 
+    useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -776,13 +920,26 @@ export default function Home() {
     setPendingFiles([]);
   }, []);
 
+  const removePendingFile = useCallback(
+    (index: number) => {
+      setPendingFiles((prev) =>
+        prev.filter((_, i) => i !== index),
+      );
+    },
+    [],
+  );
+
   // ─── Immediate composer upload ─────────────────────────────────────────────
 
   const handleFileAttach = useCallback(
     async (files: File[]) => {
       if (!files.length || isProcessing) return;
 
-      setPendingFiles(files);
+      setPendingFiles((prev) => [
+        ...prev,
+        ...files,
+      ]);
+
       setIsProcessing(true);
 
       try {
@@ -799,11 +956,20 @@ export default function Home() {
           ],
           totalSentences: res.total_sentences,
         }));
-      } catch (e) {
-        console.error("Composer upload failed:", e);
-        alert("Upload failed. Ensure the backend is running.");
-      } finally {
+
         setPendingFiles([]);
+      } catch (e) {
+        console.error(
+          "Composer upload failed:",
+          e,
+        );
+
+        alert(
+          "Upload failed. Ensure the backend is running.",
+        );
+
+        setPendingFiles([]);
+      } finally {
         setIsProcessing(false);
       }
     },
@@ -842,24 +1008,31 @@ export default function Home() {
         docsUsed: [],
       };
 
-      setTurns((prev) => [...prev, newTurn]);
+      setTurns((prev) => [
+        ...prev,
+        newTurn,
+      ]);
+
       setIsProcessing(true);
 
       try {
-        const response = await fetch(`${BASE}/query`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        const response = await fetch(
+          `${BASE}/query`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              session_id: finalSessionId,
+              query: query.trim(),
+              mode: "adaptive",
+              use_decomposition: true,
+              retrieval_engine: "ot",
+              params: DEFAULT_PARAMS,
+            }),
           },
-          body: JSON.stringify({
-            session_id: finalSessionId,
-            query: query.trim(),
-            mode: "adaptive",
-            use_decomposition: true,
-            retrieval_engine: "ot",
-            params: DEFAULT_PARAMS,
-          }),
-        });
+        );
 
         if (!response.ok) {
           throw new Error(
@@ -871,7 +1044,9 @@ export default function Home() {
           throw new Error("No stream body");
         }
 
-        const reader = response.body.getReader();
+        const reader =
+          response.body.getReader();
+
         const decoder = new TextDecoder();
 
         let buffer = "";
@@ -893,15 +1068,12 @@ export default function Home() {
 
           const lines = buffer.split("\n");
 
-          /*
-           * Preserve the final incomplete SSE line for the next network chunk.
-           * The old implementation could silently lose JSON when one SSE
-           * event happened to be split across two chunks.
-           */
           buffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
+            if (!line.startsWith("data: ")) {
+              continue;
+            }
 
             const raw = line.slice(6).trim();
 
@@ -909,7 +1081,8 @@ export default function Home() {
 
             try {
               const data = JSON.parse(raw);
-              const type = data.type || data.event;
+              const type =
+                data.type || data.event;
 
               if (type === "query_resolved") {
                 setTurns((prev) =>
@@ -917,12 +1090,15 @@ export default function Home() {
                     i === prev.length - 1
                       ? {
                           ...turn,
-                          resolvedQuery: data.resolved,
+                          resolvedQuery:
+                            data.resolved,
                         }
                       : turn,
                   ),
                 );
-              } else if (type === "selection_step") {
+              } else if (
+                type === "selection_step"
+              ) {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -932,21 +1108,26 @@ export default function Home() {
                             ...turn.contextSteps,
                             data,
                           ],
-                          coveragePct: data.coverage_pct,
-                          totalTokens: data.cumulative_tokens,
-                          docsUsed: turn.docsUsed.includes(
-                            data.source_doc,
-                          )
-                            ? turn.docsUsed
-                            : [
-                                ...turn.docsUsed,
-                                data.source_doc,
-                              ],
+                          coveragePct:
+                            data.coverage_pct,
+                          totalTokens:
+                            data.cumulative_tokens,
+                          docsUsed:
+                            turn.docsUsed.includes(
+                              data.source_doc,
+                            )
+                              ? turn.docsUsed
+                              : [
+                                  ...turn.docsUsed,
+                                  data.source_doc,
+                                ],
                         }
                       : turn,
                   ),
                 );
-              } else if (type === "saturation_reached") {
+              } else if (
+                type === "saturation_reached"
+              ) {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -958,7 +1139,9 @@ export default function Home() {
                       : turn,
                   ),
                 );
-              } else if (type === "llm_token") {
+              } else if (
+                type === "llm_token"
+              ) {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -967,12 +1150,15 @@ export default function Home() {
                           isRetrieving: false,
                           isStreaming: true,
                           answer:
-                            turn.answer + (data.token || ""),
+                            turn.answer +
+                            (data.token || ""),
                         }
                       : turn,
                   ),
                 );
-              } else if (type === "answer_complete") {
+              } else if (
+                type === "answer_complete"
+              ) {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -984,7 +1170,9 @@ export default function Home() {
                       : turn,
                   ),
                 );
-              } else if (type === "stream_error") {
+              } else if (
+                type === "stream_error"
+              ) {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -1028,7 +1216,11 @@ export default function Home() {
         setIsProcessing(false);
       }
     },
-    [session.sessionId, turns.length, isProcessing],
+    [
+      session.sessionId,
+      turns.length,
+      isProcessing,
+    ],
   );
 
   const hasTurns = turns.length > 0;
@@ -1042,88 +1234,133 @@ export default function Home() {
         isSidebarOpen={isSidebarOpen}
       />
 
-      <div className="flex h-full flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border-default bg-surface-1/80 px-6 backdrop-blur-sm">
-          <button
-            onClick={() =>
-              setIsSidebarOpen((value) => !value)
-            }
-            title={
-              isSidebarOpen
-                ? "Collapse sidebar"
-                : "Expand sidebar"
-            }
-            className="mr-1 shrink-0 rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-          >
-            {isSidebarOpen ? (
-              <PanelLeftClose size={16} />
-            ) : (
-              <PanelLeftOpen size={16} />
-            )}
-          </button>
+      {/* Main Workspace (Split Pane) */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* Left Side: Chat Area */}
+        <div
+          className={`flex h-full flex-col overflow-hidden transition-all duration-300 ${
+            isMemoryOpen ? "w-1/2 border-r border-border-default" : "w-full"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border-default bg-surface-1/80 px-6 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() =>
+                setIsSidebarOpen(
+                  (value) => !value,
+                )
+              }
+              title={
+                isSidebarOpen
+                  ? "Collapse sidebar"
+                  : "Expand sidebar"
+              }
+              className="mr-1 shrink-0 rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              {isSidebarOpen ? (
+                <PanelLeftClose size={16} />
+              ) : (
+                <PanelLeftOpen size={16} />
+              )}
+            </button>
 
-          <span className="text-sm font-semibold text-text-primary">
-            Chat
-          </span>
+            <span className="text-sm font-semibold text-text-primary">
+              Chat
+            </span>
 
-          <div className="h-4 w-px bg-border-strong" />
+            <div className="h-4 w-px bg-border-strong" />
 
-          <span className="text-xs text-text-secondary">
-            {session.sessionId
-              ? `${session.totalSentences} sentences in search space`
-              : "No active session"}
-          </span>
+            <span className="text-xs text-text-secondary">
+              {session.sessionId
+                ? `${session.totalSentences} sentences in search space`
+                : "No active session"}
+            </span>
 
-          <div className="flex-1" />
+            <div className="flex-1" />
 
-          <button
-            onClick={handleNewSession}
-            title="Reset session"
-            className="rounded p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-          >
-            <RotateCcw size={14} />
-          </button>
+            {/* NEW: Memory Panel Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsMemoryOpen((v) => !v)}
+              title="Inspect OKF Memory"
+              className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
+                isMemoryOpen
+                  ? 'bg-[#e8e8e8] text-[#181818]'
+                  : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
+              }`}
+            >
+              <Database size={14} />
+              {isMemoryOpen && <span>Memory</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNewSession}
+              title="Reset session"
+              className="rounded p-1.5 text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </div>
+
+          {!hasTurns ? (
+            <EmptyState
+              onSend={handleSend}
+              onFileAttach={handleFileAttach}
+              disabled={isProcessing}
+              hasSession={Boolean(
+                session.sessionId,
+              )}
+              attachedFiles={pendingFiles}
+              onRemoveFile={removePendingFile}
+            />
+          ) : (
+            <>
+              {/* Messages */}
+              <div className="flex flex-1 flex-col overflow-y-auto px-8 py-6 custom-scrollbar">
+                <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+                  {turns.map((turn, i) => (
+                    <TurnCard
+                      key={turn.turnIndex}
+                      turn={turn}
+                      isLast={
+                        i === turns.length - 1
+                      }
+                    />
+                  ))}
+                </div>
+
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Bottom composer */}
+              <div className="shrink-0 bg-surface-0 px-8 pb-5 pt-3">
+                <div className="mx-auto w-full max-w-4xl">
+                  <InputBar
+                    onSend={handleSend}
+                    onFileAttach={
+                      handleFileAttach
+                    }
+                    disabled={isProcessing}
+                    placeholder="Ask about the retrieved documents..."
+                    attachedFiles={pendingFiles}
+                    onRemoveFile={
+                      removePendingFile
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        {!hasTurns ? (
-          <EmptyState
-            onSend={handleSend}
-            onFileAttach={handleFileAttach}
-            disabled={isProcessing}
-            hasSession={Boolean(session.sessionId)}
-            attachedFiles={pendingFiles}
-          />
-        ) : (
-          <>
-            {/* Messages */}
-            <div className="flex flex-1 flex-col overflow-y-auto px-8 py-6 custom-scrollbar">
-              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-                {turns.map((turn, i) => (
-                  <TurnCard
-                    key={turn.turnIndex}
-                    turn={turn}
-                    isLast={i === turns.length - 1}
-                  />
-                ))}
-              </div>
-
-              <div ref={bottomRef} />
-            </div>
-
-            {/* Bottom composer */}
-            <div className="shrink-0 bg-surface-0 px-8 pb-5 pt-3">
-              <div className="mx-auto w-full max-w-4xl">
-                <InputBar
-                  onSend={handleSend}
-                  onFileAttach={handleFileAttach}
-                  disabled={isProcessing}
-                  placeholder="Ask about the retrieved documents..."
-                  attachedFiles={pendingFiles}
-                />
-              </div>
-            </div>
-          </>
+        {/* Right Side: Memory Panel */}
+        {isMemoryOpen && (
+          <div className="w-1/2 h-full flex flex-col bg-slate-950 animate-fade-in border-l border-border-default overflow-hidden">
+            <MemoryPanel />
+          </div>
         )}
       </div>
     </div>

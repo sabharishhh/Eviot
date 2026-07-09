@@ -8,11 +8,20 @@ import asyncio
 import traceback
 from contextlib import asynccontextmanager
 from typing import List, Optional
+import asyncio
+from backend.memory.loader import load_okf_memories
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from backend.memory.reconciler import reconcile_and_save
+
+import sys
+import os
+# Force Python to include the project root in the search path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from session import (
     create_session, store_sentences, append_sentences,
@@ -30,6 +39,8 @@ from llm.answer import get_llm_answer
 from demo.scenarios import SCENARIOS
 
 from eviot.encoders.encoder import Encoder
+from backend.memory.extractor import extract_memory_candidates
+from backend.memory.okf_writer import write_okf_memory
 
 MAX_TURNS = 10
 
@@ -75,7 +86,7 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.4-mini",
             messages=[{
                 "role": "user",
                 "content": (
@@ -181,6 +192,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
+    sync_memory_to_session(req.session_id)
     session = get_session(req.session_id)
     sentences = session.sentences if session else []
     conversation = session.conversation if session else []
@@ -264,6 +276,7 @@ async def query_endpoint(req: QueryRequest):
                 await asyncio.sleep(0)
  
             # 4. Store the turn
+            # 4. Store the turn
             if session:
                 turn = ConversationTurn(
                     turn_index=len(conversation) + 1,
@@ -276,6 +289,12 @@ async def query_endpoint(req: QueryRequest):
                 if not req.is_eval:
                     turn_records = turn_to_sentence_records(turn, encoder)
                     append_sentences(req.session_id, turn_records)
+                    
+                # ---------------------------------------------------
+                # NEW: Trigger asynchronous shadow extraction
+                # ---------------------------------------------------
+                if not req.is_eval:
+                    asyncio.create_task(background_memory_extraction(turn, req.session_id))
  
             yield make_sse_event("answer_complete", {
                 "answer": full_answer,
@@ -452,3 +471,103 @@ async def load_locomo_session(req: LocomoLoadRequest):
     ]
     store_sentences(session.session_id, records)
     return {"session_id": session.session_id, "total_sentences": len(records)}
+
+def sync_memory_to_session(session_id: str):
+    """
+    Loads OKF memory files, converts them into SentenceRecords, 
+    and synchronizes them with the current session context pool.
+    """
+    session = get_session(session_id)
+    if not session or not encoder:
+        return
+
+    memories = load_okf_memories()
+    new_memory_records = []
+    
+    # Get a list of IDs currently in the session to prevent duplication
+    existing_ids = {rec.id for rec in session.sentences}
+
+    for mem in memories:
+        meta = mem["metadata"]
+        mem_id = meta.get("id")
+        record_id = f"mem_{mem_id}"
+        
+        # Skip if this memory is already loaded in the session context
+        if record_id in existing_ids:
+            continue
+            
+        # Construct a dense text representation for the OT Engine and LLM
+        mem_type = meta.get('type', 'fact').upper()
+        subject = meta.get('subject', 'System')
+        predicate = meta.get('predicate', 'stated')
+        obj = meta.get('object', '')
+        
+        dense_text = (
+            f"[MEMORY: {mem_type}] {subject} {predicate} {obj}. "
+            f"{mem['body']}"
+        )
+        
+        # Embed the memory
+        emb = encoder.encode([dense_text])[0].cpu()
+        
+        new_memory_records.append(
+            SentenceRecord(
+                id=record_id,
+                text=dense_text,
+                source_doc=f"Memory Store ({mem['file_name']})",
+                source_line=1,
+                embedding=emb
+            )
+        )
+        
+    if new_memory_records:
+        append_sentences(session_id, new_memory_records)
+
+
+async def background_memory_extraction(turn: ConversationTurn, session_id: str):
+    def run_sync_pipeline():
+        result = extract_memory_candidates(turn, session_id)
+        candidates = result.get("candidates", [])
+        for candidate in candidates:
+            # Replaces the old write_okf_memory call
+            reconcile_and_save(candidate, session_id, turn.turn_index) 
+            
+    await asyncio.to_thread(run_sync_pipeline)
+
+class MemoryUpdateRequest(BaseModel):
+    file_name: str
+    new_content: str
+
+@app.get("/memory/inspect")
+async def inspect_memory():
+    from backend.memory.loader import load_okf_memories
+    from backend.memory.okf_writer import ACTIVITY_LOG
+    
+    memories = load_okf_memories()
+    log_lines = []
+    
+    import os
+    if os.path.exists(ACTIVITY_LOG):
+        with open(ACTIVITY_LOG, "r") as f:
+            log_lines = f.readlines()[-20:] # Get last 20 operations
+            
+    return {"memories": memories, "logs": log_lines}
+
+@app.post("/memory/update")
+async def update_memory(req: MemoryUpdateRequest):
+    import os
+    from datetime import datetime
+    from backend.memory.okf_writer import ACTIVITY_LOG
+    
+    filepath = os.path.join(".eviot/memory/sessions", req.file_name)
+    if not os.path.exists(filepath):
+        return {"error": "File not found"}
+        
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(req.new_content)
+        
+    with open(ACTIVITY_LOG, "a") as f:
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"[{timestamp}] EDITED rule file {req.file_name} via UI\n")
+        
+    return {"status": "success"}
