@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 from openai import OpenAI
 try:
     # Works when running tests from the root directory
@@ -24,19 +25,20 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     Your goal is to extract persistent knowledge, decisions, or preferences from the conversation.
     
     STRICT RULES FOR EXTRACTION:
-    1. SOURCE AUTHORITY: Only extract information that is explicitly stated by the USER as an instruction, rule, or preference. 
-    2. IGNORE REPETITIONS: If the Assistant is merely repeating back a decision previously established in the conversation, IGNORE IT. Do not create new memory candidates for facts already established.
-    3. ASSISTANT LIMITATION: Only extract from the Assistant's response if it contains a NEW clarification or a complex technical derivation requested by the user. Do not extract facts the Assistant is simply regurgitating from the current context.
+    1. SOURCE AUTHORITY: Extract instructions, rules, preferences, AND definitive project facts stated by the user (e.g., "Our database is X", "We use Y framework").
+    2. IGNORE REPETITIONS: If a fact is already established in current memory, IGNORE IT. Do not create new memory candidates for facts already known.
+    3. ASSISTANT LIMITATION: Do not extract facts the Assistant is simply regurgitating. Only extract if the Assistant is providing new, validated technical derivations requested by the user.
+    4. ENTITY LENGTH: The 'subject' and 'object' fields MUST be 1 to 3 words maximum (e.g., 'PostgreSQL', 'FastAPI', 'Backend Database'). Never use full sentences.
+    5. USER COMMANDS ONLY: ONLY extract decisions explicitly declared by the User. Ignore the Assistant's summaries of the uploaded documents.
     
     Output a JSON object exactly matching this schema:
     {
       "candidates": [
         {
-          "candidate_id": "<generate_unique_string>",
           "memory_type": "<decision|preference|semantic|episodic>",
-          "subject": "<entity_name>",
+          "subject": "<entity_name_1_to_3_words>",
           "predicate": "<verb>",
-          "object": "<target_value>",
+          "object": "<target_value_1_to_3_words>",
           "epistemic_state": "<decided|considered|preferred>",
           "summary": "<one_sentence_summary>",
           "confidence": <float_0_to_1>
@@ -55,7 +57,7 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini", # Cost-effective for background structured extraction
+            model="gpt-5.4-mini", # Cost-effective for background structured extraction
             response_format={ "type": "json_object" },
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -63,7 +65,17 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
             ],
             temperature=0.1
         )
-        return json.loads(response.choices[0].message.content)
+        
+        decision = json.loads(response.choices[0].message.content)
+        
+        # --- THE UUID FIX ---
+        # Inject a real, guaranteed unique ID in Python so files don't overwrite each other
+        if "candidates" in decision:
+            for candidate in decision["candidates"]:
+                candidate["candidate_id"] = uuid.uuid4().hex[:8]
+                
+        return decision
+        
     except Exception as e:
         print(f"Memory extraction failed: {e}")
         return {"candidates": []}

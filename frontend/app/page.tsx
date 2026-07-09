@@ -1274,7 +1274,7 @@ export default function Home() {
 
             <span className="text-xs text-text-secondary">
               {session.sessionId
-                ? `${session.totalSentences} sentences in search space`
+                ? `${session.totalSentences} items in search space`
                 : "No active session"}
             </span>
 

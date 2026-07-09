@@ -153,7 +153,8 @@ def run_ot_selection_streaming(
     # Compute baseline distance mapping via our local OT distance module
     # (Assuming ot_cost is available in the current file scope or via an active local import)
     # If ot_cost expects torch tensors, convert the stack accordingly
-    all_embs = torch.stack([torch.tensor(s.embedding, dtype=torch.float32) for s in sentence_records])
+    # all_embs = torch.stack([torch.tensor(s.embedding, dtype=torch.float32) for s in sentence_records])
+    all_embs = torch.stack([torch.tensor(s.embedding, dtype=torch.float32).detach().clone() for s in sentence_records])
     initial_cost = ot_cost(query_embs, all_embs)
     
     prev_cost = initial_cost

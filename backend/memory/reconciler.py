@@ -43,7 +43,7 @@ def reconcile_and_save(candidate: dict, session_id: str, turn_index: int):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.4-mini",
             response_format={ "type": "json_object" },
             messages=[
                 {"role": "system", "content": system_prompt},

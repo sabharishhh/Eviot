@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import torch
+from pathlib import Path
+from datetime import datetime
 import time
 import json
 import asyncio
@@ -43,6 +45,7 @@ from backend.memory.extractor import extract_memory_candidates
 from backend.memory.okf_writer import write_okf_memory
 
 MAX_TURNS = 10
+MEMORY_DIR = Path(".eviot/memory/sessions").resolve()
 
 encoder = None
 
@@ -571,3 +574,40 @@ async def update_memory(req: MemoryUpdateRequest):
         f.write(f"[{timestamp}] EDITED rule file {req.file_name} via UI\n")
         
     return {"status": "success"}
+
+@app.delete("/memory/{file_name}")
+async def delete_memory(file_name: str):
+    from backend.memory.okf_writer import ACTIVITY_LOG
+
+    # Only allow a plain filename, never paths like ../../something
+    if Path(file_name).name != file_name:
+        raise HTTPException(status_code=400, detail="Invalid file name")
+
+    filepath = (MEMORY_DIR / file_name).resolve()
+
+    # Extra protection against path traversal
+    if filepath.parent != MEMORY_DIR:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not filepath.exists() or not filepath.is_file():
+        raise HTTPException(status_code=404, detail="Memory file not found")
+
+    try:
+        filepath.unlink()
+
+        with open(ACTIVITY_LOG, "a", encoding="utf-8") as f:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(
+                f"[{timestamp}] DELETED memory file {file_name} via UI\n"
+            )
+
+        return {
+            "status": "success",
+            "deleted_file": file_name,
+        }
+
+    except OSError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete memory file: {str(e)}",
+        )
