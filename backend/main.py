@@ -25,6 +25,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from openai import OpenAI
+
 from session import (
     create_session, store_sentences, append_sentences,
     get_session, SentenceRecord, ConversationTurn, append_turn,
@@ -73,13 +75,10 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     if not conversation:
         return query
     
-    import os
-    
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return query
     
-    from openai import OpenAI
     client = OpenAI(api_key=api_key)
     
     history_text = "\n".join(
@@ -89,7 +88,7 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="gpt-5.4-mini",
+            model="gpt-4o-mini",
             messages=[{
                 "role": "user",
                 "content": (
@@ -106,6 +105,41 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
         return response.choices[0].message.content.strip()
     except Exception:
         return query
+
+def expand_query_vocabulary(query: str) -> str:
+    """
+    Expands the user's query with specific technical acronyms and concepts
+    to bridge the semantic-to-lexical gap for the OT engine.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return query
+        
+    client = OpenAI(api_key=api_key)
+    
+    system_instruction = (
+        "You are a technical keyword expander. "
+        "Expand the given user query with 5-10 highly specific enterprise architectural terms, "
+        "security standards (like AES-256, TLS), or database paradigms (like ACID) that are directly relevant. "
+        "Output ONLY a space-separated list of these keywords. No conversation, no bullet points."
+    )
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": f"Query: {query}"}
+            ],
+            temperature=0.1,
+            max_tokens=30
+        )
+        keywords = response.choices[0].message.content.strip()
+        # Append the generated keywords to the original query
+        return f"{query} {keywords}"
+    except Exception as e:
+        print(f"Query expansion failed: {e}")
+        return query # Safe fallback: just return the original query
 
 @app.post("/ingest")
 async def ingest_documents(
@@ -211,15 +245,20 @@ async def query_endpoint(req: QueryRequest):
                     "resolved": resolved_query
                 })
  
+            # ---------------------------------------------------
+            # NEW: Bridge the vocabulary gap before embedding
+            # ---------------------------------------------------
+            expanded_query = expand_query_vocabulary(resolved_query)
+
             # 2. Embed
             if req.use_decomposition:
-                phrases, q_embs = encode_query_decomposed(resolved_query, encoder)
+                phrases, q_embs = encode_query_decomposed(expanded_query, encoder)
                 yield make_sse_event("query_embedded", {
                     "decomposed": True,
                     "phrases": phrases,
                 })
             else:
-                q_embs = encode_query_plain(resolved_query, encoder)
+                q_embs = encode_query_plain(expanded_query, encoder)
                 yield make_sse_event("query_embedded", {
                     "decomposed": False,
                     "phrases": None,
@@ -245,7 +284,7 @@ async def query_endpoint(req: QueryRequest):
                         query_embs=q_embs,
                         sentence_records=sentences,
                         mode=req.mode,
-                        params=runtime_params, # <-- Pass the merged dictionary here
+                        params=runtime_params,
                     )
  
                 for event in event_stream:
@@ -271,14 +310,14 @@ async def query_endpoint(req: QueryRequest):
                     "stopping_reason": "no_documents", "tail_truncated": 0
                 })
  
-            # 3. Generate answer with conversation history
+            # 3. Generate answer with conversation history 
+            # (Passing the original resolved_query so the LLM doesn't get confused by the raw keywords)
             full_answer = ""
             for token in get_llm_answer(selected_texts, resolved_query, conversation):
                 full_answer += token
                 yield make_sse_event("llm_token", {"token": token})
                 await asyncio.sleep(0)
  
-            # 4. Store the turn
             # 4. Store the turn
             if session:
                 turn = ConversationTurn(

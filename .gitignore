@@ -219,3 +219,5 @@ __marimo__/
 
 # Evaluation directory
 backend/eval/
+
+.eviot/

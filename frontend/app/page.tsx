@@ -21,7 +21,6 @@ import {
   FileText,
   File,
   X,
-  Activity,
   BookOpen,
   Plus,
   RotateCcw,
@@ -520,7 +519,7 @@ function Sidebar({
                     : "justify-center rounded-lg"
                 }`}
               >
-                <Activity
+                <File
                   size={16}
                   strokeWidth={1.7}
                   className="shrink-0 text-[#b4b4b4]"
@@ -839,12 +838,11 @@ function EmptyState({
       <div className="w-full max-w-4xl -translate-y-8 px-6">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-extrabold tracking-tight text-zinc-100 md:text-4xl">
-            How can I help you today?
+            How can I help you today ?
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-text-secondary">
-            Upload any document to get started, then ask
-            questions about it below.
+            Add context. Build memory. Start the conversation.
           </p>
         </div>
 
@@ -856,8 +854,8 @@ function EmptyState({
             disabled
               ? "Uploading and encoding memory..."
               : hasSession
-                ? "Ask about the retrieved documents..."
-                : "Upload memory to get started..."
+                ? "Start conversation..."
+                : "Upload context files to get started..."
           }
           attachedFiles={attachedFiles}
           onRemoveFile={onRemoveFile}
