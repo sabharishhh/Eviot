@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-} from "react";
-import {
-  SessionState,
-  ConversationTurn,
-  QueryParams,
-} from "@/lib/types";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { SessionState, ConversationTurn, QueryParams } from "@/lib/types";
 import {
   ingestDocuments,
   getDemoScenarios,
@@ -57,38 +48,18 @@ function DocIcon({
   const cls = "shrink-0";
 
   if (ext === "pdf") {
-    return (
-      <FileText
-        size={size}
-        className={`${cls} text-red-400`}
-      />
-    );
+    return <FileText size={size} className={`${cls} text-red-400`} />;
   }
 
   if (ext === "docx" || ext === "doc") {
-    return (
-      <FileText
-        size={size}
-        className={`${cls} text-blue-400`}
-      />
-    );
+    return <FileText size={size} className={`${cls} text-blue-400`} />;
   }
 
   if (ext === "md") {
-    return (
-      <Hash
-        size={size}
-        className={`${cls} text-purple-400`}
-      />
-    );
+    return <Hash size={size} className={`${cls} text-purple-400`} />;
   }
 
-  return (
-    <File
-      size={size}
-      className={`${cls} text-slate-400`}
-    />
-  );
+  return <File size={size} className={`${cls} text-slate-400`} />;
 }
 
 // ─── Turn Card ───────────────────────────────────────────────────────────────
@@ -99,9 +70,7 @@ function TurnCard({
   turn: ConversationTurn;
   isLast: boolean;
 }) {
-  const [selectedSource, setSelectedSource] = useState<
-    number | null
-  >(null);
+  const [selectedSource, setSelectedSource] = useState<number | null>(null);
 
   return (
     <div className="flex w-full flex-col gap-4 animate-fade-in">
@@ -112,36 +81,28 @@ function TurnCard({
             {turn.query}
           </p>
 
-          {turn.resolvedQuery &&
-            turn.resolvedQuery !== turn.query && (
-              <p className="mt-1 font-sans text-xs italic text-zinc-500">
-                ↳ {turn.resolvedQuery}
-              </p>
-            )}
+          {turn.resolvedQuery && turn.resolvedQuery !== turn.query && (
+            <p className="mt-1 font-sans text-xs italic text-zinc-500">
+              ↳ {turn.resolvedQuery}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Assistant response */}
-      {(turn.answer ||
-        turn.isStreaming ||
-        turn.isRetrieving) && (
+      {(turn.answer || turn.isStreaming || turn.isRetrieving) && (
         <div className="flex w-full items-start gap-4">
           <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center">
             <div className="eviot-blob" />
           </div>
 
           <div className="flex-1 space-y-4">
-            {turn.isRetrieving &&
-            turn.contextSteps.length === 0 ? (
+            {turn.isRetrieving && turn.contextSteps.length === 0 ? (
               <div className="flex items-center gap-2 py-2 text-xs text-text-secondary">
-                <Loader2
-                  size={12}
-                  className="animate-spin text-accent"
-                />
+                <Loader2 size={12} className="animate-spin text-accent" />
 
                 <span>
-                  Retrieving context chunks using Optimal
-                  Transport...
+                  Retrieving context chunks using Optimal Transport...
                 </span>
               </div>
             ) : (
@@ -170,49 +131,42 @@ function TurnCard({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {turn.contextSteps.map(
-                        (step, idx) => {
-                          const docName =
-                            step.source_doc
-                              .split("/")
-                              .pop() || step.source_doc;
+                      {turn.contextSteps.map((step, idx) => {
+                        const docName =
+                          step.source_doc.split("/").pop() || step.source_doc;
 
-                          const shortName =
-                            docName.length > 20
-                              ? `${docName.slice(0, 18)}...`
-                              : docName;
+                        const shortName =
+                          docName.length > 20
+                            ? `${docName.slice(0, 18)}...`
+                            : docName;
 
-                          const isSelected =
-                            selectedSource === idx;
+                        const isSelected = selectedSource === idx;
 
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() =>
-                                setSelectedSource(
-                                  isSelected ? null : idx,
-                                )
-                              }
-                              className={`flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all hover:border-accent hover:bg-surface-3 hover:text-text-primary ${
-                                isSelected
-                                  ? "border-accent bg-surface-2 text-text-primary"
-                                  : "border-border-default bg-surface-2 text-text-secondary"
-                              }`}
-                            >
-                              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
-                                {idx + 1}
-                              </span>
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() =>
+                              setSelectedSource(isSelected ? null : idx)
+                            }
+                            className={`flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[11px] transition-all hover:border-accent hover:bg-surface-3 hover:text-text-primary ${
+                              isSelected
+                                ? "border-accent bg-surface-2 text-text-primary"
+                                : "border-border-default bg-surface-2 text-text-secondary"
+                            }`}
+                          >
+                            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent/15 text-[9px] font-bold text-accent">
+                              {idx + 1}
+                            </span>
 
-                              <span>{shortName}</span>
+                            <span>{shortName}</span>
 
-                              <span className="text-text-tertiary">
-                                p.{step.source_line}
-                              </span>
-                            </button>
-                          );
-                        },
-                      )}
+                            <span className="text-text-tertiary">
+                              p.{step.source_line}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {selectedSource !== null &&
@@ -220,28 +174,14 @@ function TurnCard({
                         <div className="mt-3 animate-fade-in rounded-lg border border-border-default bg-surface-2 p-3 font-sans text-xs leading-relaxed text-text-body">
                           <div className="mb-2 flex items-center justify-between border-b border-border-default pb-1.5 font-mono text-[10px] text-text-secondary">
                             <span className="truncate text-accent">
-                              {
-                                turn.contextSteps[
-                                  selectedSource
-                                ].source_doc
-                              }{" "}
-                              (p.{" "}
-                              {
-                                turn.contextSteps[
-                                  selectedSource
-                                ].source_line
-                              }
-                              )
+                              {turn.contextSteps[selectedSource].source_doc} (p.{" "}
+                              {turn.contextSteps[selectedSource].source_line})
                             </span>
                           </div>
 
                           <p className="italic text-text-body">
                             &quot;
-                            {
-                              turn.contextSteps[
-                                selectedSource
-                              ].sentence_text
-                            }
+                            {turn.contextSteps[selectedSource].sentence_text}
                             &quot;
                           </p>
                         </div>
@@ -270,13 +210,9 @@ function Sidebar({
   onNewSession: () => void;
   isSidebarOpen: boolean;
 }) {
-  const [isUploading, setIsUploading] =
-    useState(false);
-  const [scenarios, setScenarios] = useState<any[]>(
-    [],
-  );
-  const [loadingDemo, setLoadingDemo] =
-    useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [scenarios, setScenarios] = useState<any[]>([]);
+  const [loadingDemo, setLoadingDemo] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -292,24 +228,16 @@ function Sidebar({
     setIsUploading(true);
 
     try {
-      const res = await ingestDocuments(
-        files,
-        session.sessionId,
-      );
+      const res = await ingestDocuments(files, session.sessionId);
 
       onSessionUpdate({
         sessionId: res.session_id,
-        documents: [
-          ...session.documents,
-          ...(res.documents || []),
-        ],
+        documents: [...session.documents, ...(res.documents || [])],
         totalSentences: res.total_sentences,
       });
     } catch (e) {
       console.error("Sidebar upload failed:", e);
-      alert(
-        "Upload failed. Ensure the backend is running.",
-      );
+      alert("Upload failed. Ensure the backend is running.");
     } finally {
       setIsUploading(false);
     }
@@ -342,9 +270,7 @@ function Sidebar({
       {/* Brand */}
       <div
         className={`flex h-[58px] shrink-0 items-center ${
-          isSidebarOpen
-            ? "justify-between px-3"
-            : "justify-center"
+          isSidebarOpen ? "justify-between px-3" : "justify-center"
         }`}
       >
         <div className="flex min-w-0 items-center gap-2.5">
@@ -356,8 +282,14 @@ function Sidebar({
 
           {isSidebarOpen && (
             <div className="min-w-0 leading-tight">
-              <div className="truncate text-[15px] font-semibold text-[#f2f2f2]">
-                Eviot
+              <div className="flex items-center gap-2">
+                <span className="truncate text-[15px] font-semibold text-[#f2f2f2]">
+                  Eviot
+                </span>
+
+                <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-500/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-300 ring-1 ring-inset ring-zinc-500/20">
+                  Dev Preview
+                </span>
               </div>
 
               <div className="mt-0.5 truncate text-[11px] text-[#8e8e8e]">
@@ -386,16 +318,10 @@ function Sidebar({
               : "h-10 w-10 justify-center rounded-lg"
           }`}
         >
-          <Plus
-            size={18}
-            strokeWidth={1.8}
-            className="shrink-0"
-          />
+          <Plus size={18} strokeWidth={1.8} className="shrink-0" />
 
           {isSidebarOpen && (
-            <span className="text-[14px] font-medium">
-              New Session
-            </span>
+            <span className="text-[14px] font-medium">New Session</span>
           )}
         </button>
       </div>
@@ -413,12 +339,11 @@ function Sidebar({
           )}
 
           <div className="flex flex-col gap-0.5">
-            {session.documents.length === 0 &&
-              isSidebarOpen && (
-                <div className="px-2 py-2 text-[13px] text-[#777777]">
-                  No documents loaded
-                </div>
-              )}
+            {session.documents.length === 0 && isSidebarOpen && (
+              <div className="px-2 py-2 text-[13px] text-[#777777]">
+                No documents loaded
+              </div>
+            )}
 
             {session.documents.map((doc, i) => (
               <div
@@ -430,10 +355,7 @@ function Sidebar({
                     : "justify-center rounded-lg"
                 }`}
               >
-                <DocIcon
-                  filename={doc.filename}
-                  size={16}
-                />
+                <DocIcon filename={doc.filename} size={16} />
 
                 {isSidebarOpen && (
                   <span className="min-w-0 flex-1 truncate text-[13px]">
@@ -470,9 +392,7 @@ function Sidebar({
 
               {isSidebarOpen && (
                 <span className="text-[13px]">
-                  {isUploading
-                    ? "Encoding…"
-                    : "Add Documents"}
+                  {isUploading ? "Encoding…" : "Add Documents"}
                 </span>
               )}
             </button>
@@ -485,9 +405,7 @@ function Sidebar({
             accept=".pdf,.txt,.md,.docx"
             className="hidden"
             onChange={(e) => {
-              const files = Array.from(
-                e.target.files || [],
-              );
+              const files = Array.from(e.target.files || []);
 
               void handleFiles(files);
               e.target.value = "";
@@ -539,9 +457,7 @@ function Sidebar({
       {/* Settings */}
       <div
         className={
-          isSidebarOpen
-            ? "px-2 pb-2"
-            : "flex justify-center pb-2"
+          isSidebarOpen ? "px-2 pb-2" : "flex justify-center pb-2"
         }
       >
         <button
@@ -553,16 +469,10 @@ function Sidebar({
               : "w-10 justify-center rounded-lg"
           }`}
         >
-          <Settings
-            size={17}
-            strokeWidth={1.7}
-            className="shrink-0"
-          />
+          <Settings size={17} strokeWidth={1.7} className="shrink-0" />
 
           {isSidebarOpen && (
-            <span className="text-[13px]">
-              Settings
-            </span>
+            <span className="text-[13px]">Settings</span>
           )}
         </button>
       </div>
@@ -579,27 +489,23 @@ function InputBar({
   placeholder,
   attachedFiles,
   onRemoveFile,
+  animatePlaceholder = false,
+  processingPlaceholder = false,
 }: {
   onSend: (text: string) => void;
-  onFileAttach: (
-    files: File[],
-  ) => void | Promise<void>;
+  onFileAttach: (files: File[]) => void | Promise<void>;
   disabled: boolean;
   placeholder: string;
   attachedFiles: File[];
   onRemoveFile: (index: number) => void;
+  animatePlaceholder?: boolean;
+  processingPlaceholder?: boolean;
 }) {
   const [text, setText] = useState("");
-  const [isMultiline, setIsMultiline] =
-    useState(false);
+  const [isMultiline, setIsMultiline] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const textareaRef =
-    useRef<HTMLTextAreaElement>(null);
-
-  const hasContent =
-    text.trim().length > 0 ||
-    attachedFiles.length > 0;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const resizeTextarea = useCallback(() => {
     const textarea = textareaRef.current;
@@ -609,10 +515,6 @@ function InputBar({
     const singleLineHeight = 28;
     const maxHeight = 200;
 
-    /*
-     * Reset to one line first. This allows the textarea
-     * to shrink correctly when text is deleted.
-     */
     textarea.style.height = `${singleLineHeight}px`;
 
     const contentHeight = textarea.scrollHeight;
@@ -623,7 +525,6 @@ function InputBar({
     );
 
     textarea.style.height = `${nextHeight}px`;
-
     textarea.style.overflowY =
       contentHeight > maxHeight ? "auto" : "hidden";
 
@@ -673,10 +574,7 @@ function InputBar({
               key={`${file.name}-${index}`}
               className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#212121] px-2.5 py-1"
             >
-              <DocIcon
-                filename={file.name}
-                size={11}
-              />
+              <DocIcon filename={file.name} size={11} />
 
               <span className="max-w-[140px] truncate text-xs text-[#d4d4d4]">
                 {file.name}
@@ -718,9 +616,7 @@ function InputBar({
           accept=".pdf,.txt,.md,.docx"
           className="hidden"
           onChange={(e) => {
-            const files = Array.from(
-              e.target.files || [],
-            );
+            const files = Array.from(e.target.files || []);
 
             if (files.length > 0) {
               void onFileAttach(files);
@@ -765,7 +661,7 @@ function InputBar({
           disabled={disabled}
           placeholder={placeholder}
           rows={1}
-          className="
+          className={`
             min-h-[28px]
             max-h-[200px]
             flex-1
@@ -781,7 +677,13 @@ function InputBar({
             placeholder:text-[#9b9b9b]
             disabled:cursor-not-allowed
             custom-scrollbar
-          "
+            ${animatePlaceholder ? "placeholder-breathe" : ""}
+            ${
+              processingPlaceholder
+                ? "placeholder-processing-shimmer"
+                : ""
+            }
+          `}
           style={{
             height: "28px",
           }}
@@ -799,16 +701,12 @@ function InputBar({
               : "bg-white text-black hover:scale-[1.03] hover:bg-[#e8e8e8]"
           }`}
         >
-          <ArrowUp
-            size={24}
-            strokeWidth={2.6}
-          />
+          <ArrowUp size={24} strokeWidth={2.6} />
         </button>
       </div>
 
       <p className="text-center text-[11px] text-text-tertiary">
-        Eviot is AI and can make mistakes. Please
-        double-check responses.
+        Eviot is AI and can make mistakes. Please double-check responses.
       </p>
     </div>
   );
@@ -825,9 +723,7 @@ function EmptyState({
   onRemoveFile,
 }: {
   onSend: (text: string) => void;
-  onFileAttach: (
-    files: File[],
-  ) => void | Promise<void>;
+  onFileAttach: (files: File[]) => void | Promise<void>;
   disabled: boolean;
   hasSession: boolean;
   attachedFiles: File[];
@@ -857,6 +753,8 @@ function EmptyState({
                 ? "Start conversation..."
                 : "Upload context files to get started..."
           }
+          animatePlaceholder={!disabled}
+          processingPlaceholder={disabled}
           attachedFiles={attachedFiles}
           onRemoveFile={onRemoveFile}
         />
@@ -868,29 +766,17 @@ function EmptyState({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [session, setSession] =
-    useState<SessionState>({
-      sessionId: null,
-      documents: [],
-      totalSentences: 0,
-    });
+  const [session, setSession] = useState<SessionState>({
+    sessionId: null,
+    documents: [],
+    totalSentences: 0,
+  });
 
-  const [turns, setTurns] = useState<
-    ConversationTurn[]
-  >([]);
-
-  const [pendingFiles, setPendingFiles] = useState<
-    File[]
-  >([]);
-
-  const [isProcessing, setIsProcessing] =
-    useState(false);
-
-  const [isSidebarOpen, setIsSidebarOpen] =
-    useState(true);
-
-  const [isMemoryOpen, setIsMemoryOpen] = 
-    useState(false);
+  const [turns, setTurns] = useState<ConversationTurn[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -918,14 +804,9 @@ export default function Home() {
     setPendingFiles([]);
   }, []);
 
-  const removePendingFile = useCallback(
-    (index: number) => {
-      setPendingFiles((prev) =>
-        prev.filter((_, i) => i !== index),
-      );
-    },
-    [],
-  );
+  const removePendingFile = useCallback((index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   // ─── Immediate composer upload ─────────────────────────────────────────────
 
@@ -933,38 +814,23 @@ export default function Home() {
     async (files: File[]) => {
       if (!files.length || isProcessing) return;
 
-      setPendingFiles((prev) => [
-        ...prev,
-        ...files,
-      ]);
-
+      setPendingFiles((prev) => [...prev, ...files]);
       setIsProcessing(true);
 
       try {
-        const res = await ingestDocuments(
-          files,
-          session.sessionId,
-        );
+        const res = await ingestDocuments(files, session.sessionId);
 
         setSession((prev) => ({
           sessionId: res.session_id,
-          documents: [
-            ...prev.documents,
-            ...(res.documents || []),
-          ],
+          documents: [...prev.documents, ...(res.documents || [])],
           totalSentences: res.total_sentences,
         }));
 
         setPendingFiles([]);
       } catch (e) {
-        console.error(
-          "Composer upload failed:",
-          e,
-        );
+        console.error("Composer upload failed:", e);
 
-        alert(
-          "Upload failed. Ensure the backend is running.",
-        );
+        alert("Upload failed. Ensure the backend is running.");
 
         setPendingFiles([]);
       } finally {
@@ -977,14 +843,10 @@ export default function Home() {
   // ─── Query handling ────────────────────────────────────────────────────────
 
   const handleSend = useCallback(
-    async (
-      query: string,
-      overrideSessionId?: string,
-    ) => {
+    async (query: string, overrideSessionId?: string) => {
       if (isProcessing || !query.trim()) return;
 
-      const finalSessionId =
-        overrideSessionId || session.sessionId;
+      const finalSessionId = overrideSessionId || session.sessionId;
 
       if (!finalSessionId) {
         alert("Please upload a document first.");
@@ -1006,55 +868,41 @@ export default function Home() {
         docsUsed: [],
       };
 
-      setTurns((prev) => [
-        ...prev,
-        newTurn,
-      ]);
-
+      setTurns((prev) => [...prev, newTurn]);
       setIsProcessing(true);
 
       try {
-        const response = await fetch(
-          `${BASE}/query`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              session_id: finalSessionId,
-              query: query.trim(),
-              mode: "adaptive",
-              use_decomposition: true,
-              retrieval_engine: "ot",
-              params: DEFAULT_PARAMS,
-            }),
+        const response = await fetch(`${BASE}/query`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            session_id: finalSessionId,
+            query: query.trim(),
+            mode: "adaptive",
+            use_decomposition: true,
+            retrieval_engine: "ot",
+            params: DEFAULT_PARAMS,
+          }),
+        });
 
         if (!response.ok) {
-          throw new Error(
-            `Request failed with status ${response.status}`,
-          );
+          throw new Error(`Request failed with status ${response.status}`);
         }
 
         if (!response.body) {
           throw new Error("No stream body");
         }
 
-        const reader =
-          response.body.getReader();
-
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
         let buffer = "";
         let done = false;
 
         while (!done) {
-          const {
-            value,
-            done: readerDone,
-          } = await reader.read();
+          const { value, done: readerDone } = await reader.read();
 
           done = readerDone;
 
@@ -1065,7 +913,6 @@ export default function Home() {
           }
 
           const lines = buffer.split("\n");
-
           buffer = lines.pop() || "";
 
           for (const line of lines) {
@@ -1079,8 +926,7 @@ export default function Home() {
 
             try {
               const data = JSON.parse(raw);
-              const type =
-                data.type || data.event;
+              const type = data.type || data.event;
 
               if (type === "query_resolved") {
                 setTurns((prev) =>
@@ -1088,44 +934,28 @@ export default function Home() {
                     i === prev.length - 1
                       ? {
                           ...turn,
-                          resolvedQuery:
-                            data.resolved,
+                          resolvedQuery: data.resolved,
                         }
                       : turn,
                   ),
                 );
-              } else if (
-                type === "selection_step"
-              ) {
+              } else if (type === "selection_step") {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
                       ? {
                           ...turn,
-                          contextSteps: [
-                            ...turn.contextSteps,
-                            data,
-                          ],
-                          coveragePct:
-                            data.coverage_pct,
-                          totalTokens:
-                            data.cumulative_tokens,
-                          docsUsed:
-                            turn.docsUsed.includes(
-                              data.source_doc,
-                            )
-                              ? turn.docsUsed
-                              : [
-                                  ...turn.docsUsed,
-                                  data.source_doc,
-                                ],
+                          contextSteps: [...turn.contextSteps, data],
+                          coveragePct: data.coverage_pct,
+                          totalTokens: data.cumulative_tokens,
+                          docsUsed: turn.docsUsed.includes(data.source_doc)
+                            ? turn.docsUsed
+                            : [...turn.docsUsed, data.source_doc],
                         }
                       : turn,
                   ),
                 );
-              } else if (
-                type === "saturation_reached"
-              ) {
+              } else if (type === "saturation_reached") {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -1137,9 +967,7 @@ export default function Home() {
                       : turn,
                   ),
                 );
-              } else if (
-                type === "llm_token"
-              ) {
+              } else if (type === "llm_token") {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -1147,16 +975,12 @@ export default function Home() {
                           ...turn,
                           isRetrieving: false,
                           isStreaming: true,
-                          answer:
-                            turn.answer +
-                            (data.token || ""),
+                          answer: turn.answer + (data.token || ""),
                         }
                       : turn,
                   ),
                 );
-              } else if (
-                type === "answer_complete"
-              ) {
+              } else if (type === "answer_complete") {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -1168,9 +992,7 @@ export default function Home() {
                       : turn,
                   ),
                 );
-              } else if (
-                type === "stream_error"
-              ) {
+              } else if (type === "stream_error") {
                 setTurns((prev) =>
                   prev.map((turn, i) =>
                     i === prev.length - 1
@@ -1185,18 +1007,13 @@ export default function Home() {
                 );
               }
             } catch {
-              console.warn(
-                "Ignoring malformed SSE event:",
-                raw,
-              );
+              console.warn("Ignoring malformed SSE event:", raw);
             }
           }
         }
       } catch (e: unknown) {
         const message =
-          e instanceof Error
-            ? e.message
-            : "Unknown connection error";
+          e instanceof Error ? e.message : "Unknown connection error";
 
         setTurns((prev) =>
           prev.map((turn, i) =>
@@ -1214,11 +1031,7 @@ export default function Home() {
         setIsProcessing(false);
       }
     },
-    [
-      session.sessionId,
-      turns.length,
-      isProcessing,
-    ],
+    [session.sessionId, turns.length, isProcessing],
   );
 
   const hasTurns = turns.length > 0;
@@ -1232,24 +1045,21 @@ export default function Home() {
         isSidebarOpen={isSidebarOpen}
       />
 
-      {/* Main Workspace (Split Pane) */}
+      {/* Main Workspace */}
       <div className="flex flex-1 overflow-hidden">
-        
-        {/* Left Side: Chat Area */}
+        {/* Chat Area */}
         <div
           className={`flex h-full flex-col overflow-hidden transition-all duration-300 ${
-            isMemoryOpen ? "w-1/2 border-r border-border-default" : "w-full"
+            isMemoryOpen
+              ? "w-1/2 border-r border-border-default"
+              : "w-full"
           }`}
         >
           {/* Header */}
           <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border-default bg-surface-1/80 px-6 backdrop-blur-sm">
             <button
               type="button"
-              onClick={() =>
-                setIsSidebarOpen(
-                  (value) => !value,
-                )
-              }
+              onClick={() => setIsSidebarOpen((value) => !value)}
               title={
                 isSidebarOpen
                   ? "Collapse sidebar"
@@ -1278,14 +1088,14 @@ export default function Home() {
 
             <div className="flex-1" />
 
-            {/* NEW: Memory Panel Toggle Button */}
+            {/* Memory Panel Toggle */}
             <button
               type="button"
               onClick={() => setIsMemoryOpen((v) => !v)}
               title="Inspect OKF Memory"
               className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs font-semibold transition-colors ${
                 isMemoryOpen
-                  ? 'bg-[#e8e8e8] text-[#181818]'
+                  ? "bg-[#e8e8e8] text-[#181818]"
                   : "text-text-secondary hover:bg-surface-2 hover:text-text-primary"
               }`}
             >
@@ -1308,9 +1118,7 @@ export default function Home() {
               onSend={handleSend}
               onFileAttach={handleFileAttach}
               disabled={isProcessing}
-              hasSession={Boolean(
-                session.sessionId,
-              )}
+              hasSession={Boolean(session.sessionId)}
               attachedFiles={pendingFiles}
               onRemoveFile={removePendingFile}
             />
@@ -1323,9 +1131,7 @@ export default function Home() {
                     <TurnCard
                       key={turn.turnIndex}
                       turn={turn}
-                      isLast={
-                        i === turns.length - 1
-                      }
+                      isLast={i === turns.length - 1}
                     />
                   ))}
                 </div>
@@ -1338,15 +1144,11 @@ export default function Home() {
                 <div className="mx-auto w-full max-w-4xl">
                   <InputBar
                     onSend={handleSend}
-                    onFileAttach={
-                      handleFileAttach
-                    }
+                    onFileAttach={handleFileAttach}
                     disabled={isProcessing}
                     placeholder="Ask about the retrieved documents..."
                     attachedFiles={pendingFiles}
-                    onRemoveFile={
-                      removePendingFile
-                    }
+                    onRemoveFile={removePendingFile}
                   />
                 </div>
               </div>
@@ -1354,9 +1156,9 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Side: Memory Panel */}
+        {/* Memory Panel */}
         {isMemoryOpen && (
-          <div className="w-1/2 h-full flex flex-col bg-slate-950 animate-fade-in border-l border-border-default overflow-hidden">
+          <div className="flex h-full w-1/2 flex-col overflow-hidden border-l border-border-default bg-slate-950 animate-fade-in">
             <MemoryPanel />
           </div>
         )}

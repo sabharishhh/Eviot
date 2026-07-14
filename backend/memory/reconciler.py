@@ -42,38 +42,49 @@ def reconcile_and_save(candidate: dict, session_id: str, turn_index: int):
     user_prompt = f"EXISTING MEMORIES:\n{existing_context}\n\nNEW CANDIDATE:\n{json.dumps(candidate)}"
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-5.4-mini",
-            response_format={ "type": "json_object" },
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.0
+        response = client.responses.create(
+            model="gpt-5.6-terra",
+            instructions=system_prompt,
+            input=user_prompt,
+            reasoning={"effort": "none"},
+            text={
+                "format": {
+                    "type": "json_object"
+                }
+            },
         )
-        decision = json.loads(response.choices[0].message.content)
+
+        decision = json.loads(response.output_text)
 
         # Process the supersession
         if decision.get("operation") == "supersede" and decision.get("existing_memory_id"):
             target_id = decision.get("existing_memory_id")
-            
+
             for m in existing:
-                if m['metadata']['id'] == target_id:
-                    old_filepath = os.path.join(".eviot/memory/sessions", m["file_name"])
-                    
+                if m["metadata"]["id"] == target_id:
+                    old_filepath = os.path.join(
+                        ".eviot/memory/sessions",
+                        m["file_name"]
+                    )
+
                     with open(old_filepath, "r", encoding="utf-8") as f:
                         content = f.read()
-                        
+
                     # Demote the old file
-                    content = content.replace("status: active", "status: superseded")
-                    
+                    content = content.replace(
+                        "status: active",
+                        "status: superseded"
+                    )
+
                     with open(old_filepath, "w", encoding="utf-8") as f:
                         f.write(content)
 
                     # Log the administrative change
                     with open(ACTIVITY_LOG, "a") as f:
-                        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        f.write(f"[{timestamp}] SUPERSEDED memory {target_id} (Merged duplicate/update)\n")
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        f.write(
+                            f"[{timestamp}] SUPERSEDED memory {target_id} (Merged duplicate/update)\n"
+                        )
                     break
 
         # Write the new definitive candidate to disk

@@ -34,41 +34,57 @@ def get_llm_answer(context_sentences: list[str], query: str, conversation: list 
         yield from _ollama_stream(system_prompt, context_block, query, conversation)
 
 
-def _openai_stream(system_prompt: str, context_block: str, query: str, api_key: str, conversation: list = None):
+def _openai_stream(
+    system_prompt: str,
+    context_block: str,
+    query: str,
+    api_key: str,
+    conversation: list = None,
+):
     from openai import OpenAI
+
     client = OpenAI(api_key=api_key)
-    
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    # Process and append the FULL conversation log (no truncation)
+
+    input_items = []
+
+    # Conversation history
     if conversation:
         for turn in conversation:
-            # Safely fetch fields matching the ConversationTurn attributes found in main.py
-            user_msg = getattr(turn, 'original_query', '')
-            asst_msg = getattr(turn, 'answer', '')
-            
+            user_msg = getattr(turn, "original_query", "")
+            asst_msg = getattr(turn, "answer", "")
+
             if user_msg:
-                messages.append({"role": "user", "content": user_msg})
+                input_items.append({
+                    "role": "user",
+                    "content": user_msg,
+                })
+
             if asst_msg:
-                messages.append({"role": "assistant", "content": asst_msg})
-                
-    # Append the current active turn along with its retrieved Document Context
-    current_prompt = (
-        f"DOCUMENT CONTEXT:\n{context_block}\n\n"
-        f"USER QUESTION: {query}"
+                input_items.append({
+                    "role": "assistant",
+                    "content": asst_msg,
+                })
+
+    # Current turn
+    input_items.append({
+        "role": "user",
+        "content": (
+            f"DOCUMENT CONTEXT:\n{context_block}\n\n"
+            f"USER QUESTION: {query}"
+        ),
+    })
+
+    stream = client.responses.create(
+        model="gpt-5.6-terra",
+        instructions=system_prompt,
+        input=input_items,
+        reasoning={"effort": "none"},
+        stream=True,
     )
-    messages.append({"role": "user", "content": current_prompt})
-    
-    response = client.chat.completions.create(
-        model="gpt-5.4-mini",
-        messages=messages,
-        temperature=0.0,
-        stream=True
-    )
-    
-    for chunk in response:
-        if chunk.choices[0].delta.content:
-            yield chunk.choices[0].delta.content
+
+    for event in stream:
+        if event.type == "response.output_text.delta":
+            yield event.delta
 
 def _ollama_stream(system_prompt: str, context_block: str, query: str, conversation=None):
     import requests, json

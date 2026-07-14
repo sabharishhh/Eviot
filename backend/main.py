@@ -87,22 +87,25 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     )
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Conversation so far:\n{history_text}\n\n"
-                    f"New user query: '{query}'\n\n"
-                    "Rewrite the query to be fully self-contained, resolving any pronouns "
-                    "or references to previous turns. If it's already self-contained, "
-                    "return it unchanged. Return ONLY the rewritten query."
-                )
-            }],
-            temperature=0.0,
-            max_tokens=150
+        response = client.responses.create(
+            model="gpt-5.6-terra",
+            instructions=(
+                "Rewrite the user's query so it is fully self-contained. "
+                "Resolve pronouns and references to previous conversation. "
+                "If it is already self-contained, return it unchanged. "
+                "Return only the rewritten query."
+            ),
+            input=(
+                f"Conversation so far:\n{history_text}\n\n"
+                f"New user query: {query}"
+            ),
+            reasoning={
+                "effort": "none"
+            },
+            max_output_tokens=150,
         )
-        return response.choices[0].message.content.strip()
+
+        return response.output_text.strip()
     except Exception:
         return query
 
@@ -125,16 +128,17 @@ def expand_query_vocabulary(query: str) -> str:
     )
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": f"Query: {query}"}
-            ],
-            temperature=0.1,
-            max_tokens=30
+        response = client.responses.create(
+            model="gpt-5.6-terra",
+            instructions=system_instruction,
+            input=f"Query: {query}",
+            reasoning={
+                "effort": "none"
+            },
+            max_output_tokens=30,
         )
-        keywords = response.choices[0].message.content.strip()
+
+        keywords = response.output_text.strip()
         # Append the generated keywords to the original query
         return f"{query} {keywords}"
     except Exception as e:

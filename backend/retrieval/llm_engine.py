@@ -3,46 +3,56 @@ from typing import Generator, List
 from session import SentenceRecord
 from openai import OpenAI
 
+
 def run_llm_selection_streaming(
-    query: str, 
+    query: str,
     sentence_records: List[SentenceRecord]
 ) -> Generator[dict, None, None]:
     """
-    Passes all candidate sentences to gpt-5.4-mini and asks it to select 
+    Passes all candidate sentences to GPT-5.6 Terra and asks it to select
     the relevant ones. Formats the output to mimic the OT event stream.
     """
+
     client = OpenAI()
-    
+
     candidates_json = json.dumps(
-        [{"id": s.id, "text": s.text} for s in sentence_records], 
+        [{"id": s.id, "text": s.text} for s in sentence_records],
         indent=2
     )
-    
+
     prompt = f"""
-    You are a retrieval engine. Analyze the user's query and the list of candidate sentences.
-    Select the absolute minimum set of sentences required to fully answer the query.
-    
-    Query: "{query}"
-    
-    Candidates:
-    {candidates_json}
-    
-    Output STRICT JSON containing a 'selected_ids' array with the IDs of the necessary sentences.
-    """
-    
+You are a retrieval engine. Analyze the user's query and the list of candidate sentences.
+
+Select the absolute minimum set of sentences required to fully answer the query.
+
+Query:
+"{query}"
+
+Candidates:
+{candidates_json}
+
+Output STRICT JSON containing a "selected_ids" array with the IDs of the necessary sentences.
+"""
+
     try:
-        response = client.chat.completions.create(
-            model="gpt-5.4-mini",
-            messages=[
-                {"role": "system", "content": "You output strict JSON in the format: {'selected_ids': ['id1', 'id2']}"},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0
+        response = client.responses.create(
+            model="gpt-5.6-terra",
+            instructions=(
+                "You output strict JSON in the format:\n"
+                '{"selected_ids": ["id1", "id2"]}'
+            ),
+            input=prompt,
+            reasoning={"effort": "none"},
+            text={
+                "format": {
+                    "type": "json_object"
+                }
+            },
         )
-        
-        data = json.loads(response.choices[0].message.content)
+
+        data = json.loads(response.output_text)
         selected_ids = data.get("selected_ids", [])
+
     except Exception as e:
         print(f"LLM Retrieval failed: {e}")
         selected_ids = []
@@ -56,7 +66,7 @@ def run_llm_selection_streaming(
 
         fake_coverage = round((step_idx + 1) / total, 4)
         fake_gain = round(1.0 / total, 4)
-        
+
         yield {
             "event": "selection_step",
             "step": step_idx + 1,
@@ -64,7 +74,7 @@ def run_llm_selection_streaming(
             "sentence_text": record.text,
             "source_doc": record.source_doc,
             "source_line": record.source_line,
-            "ot_cost": 0.0, 
+            "ot_cost": 0.0,
             "marginal_gain": fake_gain,
             "coverage_pct": fake_coverage,
             "cumulative_tokens": cumulative_tokens,
@@ -78,5 +88,5 @@ def run_llm_selection_streaming(
         "total_sentences_selected": len(selected_records),
         "total_tokens": cumulative_tokens,
         "stopping_reason": "llm_selection_complete",
-        "tail_truncated": 0
+        "tail_truncated": 0,
     }

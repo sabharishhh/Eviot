@@ -56,26 +56,27 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     """
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-5.4-mini", # Cost-effective for background structured extraction
-            response_format={ "type": "json_object" },
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.1
+        response = client.responses.create(
+            model="gpt-5.6-terra",
+            instructions=system_prompt,
+            input=user_prompt,
+            reasoning={"effort": "none"},
+            text={
+                "format": {
+                    "type": "json_object"
+                }
+            },
         )
-        
-        decision = json.loads(response.choices[0].message.content)
-        
-        # --- THE UUID FIX ---
-        # Inject a real, guaranteed unique ID in Python so files don't overwrite each other
+
+        decision = json.loads(response.output_text)
+
+        # Inject guaranteed unique IDs
         if "candidates" in decision:
             for candidate in decision["candidates"]:
                 candidate["candidate_id"] = uuid.uuid4().hex[:8]
-                
+
         return decision
-        
+
     except Exception as e:
         print(f"Memory extraction failed: {e}")
         return {"candidates": []}
