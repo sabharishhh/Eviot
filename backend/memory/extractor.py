@@ -28,7 +28,7 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     1. SOURCE AUTHORITY: Extract instructions, rules, preferences, AND definitive project facts stated by the user (e.g., "Our database is X", "We use Y framework").
     2. IGNORE REPETITIONS: If a fact is already established in current memory, IGNORE IT. Do not create new memory candidates for facts already known.
     3. ASSISTANT LIMITATION: Do not extract facts the Assistant is simply regurgitating. Only extract if the Assistant is providing new, validated technical derivations requested by the user.
-    4. ENTITY LENGTH: The 'subject' and 'object' fields MUST be 1 to 3 words maximum (e.g., 'PostgreSQL', 'FastAPI', 'Backend Database'). Never use full sentences.
+    4. ENTITY LENGTH: The 'subject' and 'object' fields MUST be 1 to 3 words maximum (e.g., 'PostgreSQL', 'FastAPI', 'Backend Database'). Never use full sentences. EXCEPTION: proper nouns — names of people, places, products, or organisations — are recorded in FULL even if longer than 3 words. 'Sabharish Puthur Vaidyanathan' must not be shortened to 'Sabharish Vaidyanathan'. Truncating a name changes what it refers to. The cap exists to stop sentences being stuffed into entity slots, not to abbreviate names.
     5. USER COMMANDS ONLY: ONLY extract decisions explicitly declared by the User. Ignore the Assistant's summaries of the uploaded documents.
     
     Output a JSON object exactly matching this schema:
