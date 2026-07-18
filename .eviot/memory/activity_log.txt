@@ -33,3 +33,13 @@
 [2026-07-18 20:04:30] CREATED memory file .eviot/memory/sessions/8abade24_9ea82c3b.md (Session: 8abade24, Turn: 1)
 [2026-07-18 20:05:45] SUPERSEDED memory 9ea82c3b (Merged duplicate/update)
 [2026-07-18 20:05:45] CREATED memory file .eviot/memory/sessions/8abade24_5467402f.md (Session: 8abade24, Turn: 10)
+[2026-07-18 20:13:19] DELETED memory file 8abade24_5467402f.md via UI
+[2026-07-18 20:14:13] CREATED memory file .eviot/memory/sessions/d42c20a4_ce11c644.md (Session: d42c20a4, Turn: 1)
+[2026-07-18 20:14:59] SUPERSEDED memory ce11c644 (Merged duplicate/update)
+[2026-07-18 20:14:59] CREATED memory file .eviot/memory/sessions/d42c20a4_d5bed0f9.md (Session: d42c20a4, Turn: 7)
+[2026-07-18 20:17:04] DELETED memory file d42c20a4_d5bed0f9.md via UI
+[2026-07-18 20:17:31] CREATED memory file .eviot/memory/sessions/5e1a80e0_791334b7.md (Session: 5e1a80e0, Turn: 3)
+[2026-07-18 20:17:33] CREATED memory file .eviot/memory/sessions/5e1a80e0_98d1b268.md (Session: 5e1a80e0, Turn: 3)
+[2026-07-18 20:24:51] DELETED memory file 5e1a80e0_791334b7.md via UI
+[2026-07-18 20:24:54] DELETED memory file 5e1a80e0_98d1b268.md via UI
+[2026-07-18 20:25:16] CREATED memory file .eviot/memory/sessions/df7a4935_8fe1e54a.md (Session: df7a4935, Turn: 3)
