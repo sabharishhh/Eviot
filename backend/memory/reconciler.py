@@ -39,7 +39,11 @@ def reconcile_and_save(candidate: dict, session_id: str, turn_index: int):
     }
     """
 
-    user_prompt = f"EXISTING MEMORIES:\n{existing_context}\n\nNEW CANDIDATE:\n{json.dumps(candidate)}"
+    user_prompt = (
+        f"EXISTING MEMORIES:\n{existing_context}\n\n"
+        f"NEW CANDIDATE:\n{json.dumps(candidate)}\n\n"
+        "Respond with a json object matching the required schema."
+    )
 
     try:
         response = client.responses.create(

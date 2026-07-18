@@ -22,6 +22,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Database,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 
 import MemoryPanel from "@/components/visualization/MemoryPanel";
@@ -34,6 +36,28 @@ const DEFAULT_PARAMS: QueryParams = {
   k_max: 12,
   k: 5,
 };
+
+// NOTE: mirrors GET /sessions — move this into lib/types.ts alongside your
+// other shared types once you've merged it in.
+interface SessionSummary {
+  session_id: string;
+  title: string;
+  documents: string[];
+  turn_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 // ─── File type icon helper ───────────────────────────────────────────────────
 
@@ -102,7 +126,7 @@ function TurnCard({
                 <Loader2 size={12} className="animate-spin text-accent" />
 
                 <span>
-                  Retrieving context chunks using Optimal Transport...
+                  Thinking...
                 </span>
               </div>
             ) : (
@@ -204,11 +228,19 @@ function Sidebar({
   onSessionUpdate,
   onNewSession,
   isSidebarOpen,
+  sessions,
+  loadingSessions,
+  onResumeSession,
+  onDeleteSession,
 }: {
   session: SessionState;
   onSessionUpdate: (s: SessionState) => void;
   onNewSession: () => void;
   isSidebarOpen: boolean;
+  sessions: SessionSummary[];
+  loadingSessions: boolean;
+  onResumeSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [scenarios, setScenarios] = useState<any[]>([]);
@@ -328,6 +360,73 @@ function Sidebar({
 
       {/* Scrollable navigation */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-3 custom-scrollbar">
+        {/* Recent Sessions */}
+        <section className="mb-5">
+          {isSidebarOpen && (
+            <div className="mb-1 px-2">
+              <span className="text-[12px] font-semibold text-[#b4b4b4]">
+                Recent Sessions
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-0.5">
+            {loadingSessions && isSidebarOpen && (
+              <div className="px-2 py-2 text-[13px] text-[#777777]">
+                Loading…
+              </div>
+            )}
+
+            {!loadingSessions && sessions.length === 0 && isSidebarOpen && (
+              <div className="px-2 py-2 text-[13px] text-[#777777]">
+                No sessions yet
+              </div>
+            )}
+
+            {sessions.map((s) => {
+              const isActive = s.session_id === session.sessionId;
+
+              return (
+                <div
+                  key={s.session_id}
+                  title={s.title}
+                  onClick={() => onResumeSession(s.session_id)}
+                  className={`group flex h-9 cursor-pointer items-center text-[#d4d4d4] transition-colors hover:bg-[#242424] ${
+                    isSidebarOpen
+                      ? "gap-3 rounded-lg px-2"
+                      : "justify-center rounded-lg"
+                  } ${isActive ? "bg-[#242424] text-[#f2f2f2]" : ""}`}
+                >
+                  <MessageSquare size={16} className="shrink-0" />
+
+                  {isSidebarOpen && (
+                    <>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px]">{s.title}</div>
+                        <div className="truncate text-[11px] text-[#777777]">
+                          {s.turn_count} {s.turn_count === 1 ? "turn" : "turns"} · {timeAgo(s.updated_at)}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        title="Delete session"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(s.session_id);
+                        }}
+                        className="shrink-0 rounded p-1 text-[#777777] opacity-0 transition-opacity hover:text-red-400 group-hover:opacity-100"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Documents */}
         <section className="mb-5">
           {isSidebarOpen && (
@@ -738,7 +837,7 @@ function EmptyState({
           </h1>
 
           <p className="mx-auto mt-5 max-w-md text-sm leading-relaxed text-text-secondary">
-            Add context. Build memory. Start the conversation.
+            Ask anything.
           </p>
         </div>
 
@@ -750,8 +849,8 @@ function EmptyState({
             disabled
               ? "Uploading and encoding memory..."
               : hasSession
-                ? "Start conversation..."
-                : "Upload context files to get started..."
+                ? "Ask anything"
+                : "Ask anything"
           }
           animatePlaceholder={!disabled}
           processingPlaceholder={disabled}
@@ -778,6 +877,9 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -786,11 +888,91 @@ export default function Home() {
     });
   }, [turns]);
 
+  const refreshSessions = useCallback(async () => {
+    setLoadingSessions(true);
+
+    try {
+      const res = await fetch(`${BASE}/sessions`);
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+      const data = await res.json();
+      setSessions(data.sessions || []);
+    } catch (e) {
+      console.error("Failed to load sessions:", e);
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSessions();
+  }, [refreshSessions]);
+
+  const handleResumeSession = useCallback(async (sessionId: string) => {
+    try {
+      const res = await fetch(`${BASE}/session/${sessionId}/info`);
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+      const info = await res.json();
+
+      setSession({
+        sessionId: info.session_id,
+        documents: (info.documents || []).map((filename: string) => ({
+          filename,
+        })),
+        totalSentences: info.total_sentences,
+      });
+
+      setTurns(
+        (info.conversation || []).map((t: any) => ({
+          turnIndex: t.turn_index,
+          query: t.query,
+          resolvedQuery: t.resolved_query,
+          contextSteps: [],
+          answer: t.answer,
+          isStreaming: false,
+          isRetrieving: false,
+          coveragePct: 0,
+          totalTokens: 0,
+          docsUsed: [],
+        })),
+      );
+
+      setPendingFiles([]);
+    } catch (e) {
+      console.error("Failed to resume session:", e);
+      alert("Couldn't load that session. Ensure the backend is running.");
+    }
+  }, []);
+
+  const handleDeleteSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const res = await fetch(`${BASE}/session/${sessionId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+        setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
+
+        if (session.sessionId === sessionId) {
+          setSession({ sessionId: null, documents: [], totalSentences: 0 });
+          setTurns([]);
+        }
+      } catch (e) {
+        console.error("Failed to delete session:", e);
+        alert("Couldn't delete that session. Ensure the backend is running.");
+      }
+    },
+    [session.sessionId],
+  );
+
   const handleSessionUpdate = useCallback(
     (updatedSession: SessionState) => {
       setSession(updatedSession);
+      void refreshSessions();
     },
-    [],
+    [refreshSessions],
   );
 
   const handleNewSession = useCallback(() => {
@@ -827,6 +1009,7 @@ export default function Home() {
         }));
 
         setPendingFiles([]);
+        void refreshSessions();
       } catch (e) {
         console.error("Composer upload failed:", e);
 
@@ -837,7 +1020,7 @@ export default function Home() {
         setIsProcessing(false);
       }
     },
-    [session.sessionId, isProcessing],
+    [session.sessionId, isProcessing, refreshSessions],
   );
 
   // ─── Query handling ────────────────────────────────────────────────────────
@@ -846,11 +1029,23 @@ export default function Home() {
     async (query: string, overrideSessionId?: string) => {
       if (isProcessing || !query.trim()) return;
 
-      const finalSessionId = overrideSessionId || session.sessionId;
+      let finalSessionId = overrideSessionId || session.sessionId;
 
+      // No document required — create an empty session on first message.
       if (!finalSessionId) {
-        alert("Please upload a document first.");
-        return;
+        try {
+          const res = await fetch(`${BASE}/session`, { method: "POST" });
+          if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+
+          const data = await res.json();
+          finalSessionId = data.session_id;
+
+          setSession((prev) => ({ ...prev, sessionId: data.session_id }));
+        } catch (e) {
+          console.error("Failed to create session:", e);
+          alert("Couldn't start a session. Ensure the backend is running.");
+          return;
+        }
       }
 
       const turnIndex = turns.length + 1;
@@ -1029,9 +1224,10 @@ export default function Home() {
         );
       } finally {
         setIsProcessing(false);
+        void refreshSessions();
       }
     },
-    [session.sessionId, turns.length, isProcessing],
+    [session.sessionId, turns.length, isProcessing, refreshSessions],
   );
 
   const hasTurns = turns.length > 0;
@@ -1043,6 +1239,10 @@ export default function Home() {
         onSessionUpdate={handleSessionUpdate}
         onNewSession={handleNewSession}
         isSidebarOpen={isSidebarOpen}
+        sessions={sessions}
+        loadingSessions={loadingSessions}
+        onResumeSession={handleResumeSession}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Main Workspace */}
@@ -1081,9 +1281,11 @@ export default function Home() {
             <div className="h-4 w-px bg-border-strong" />
 
             <span className="text-xs text-text-secondary">
-              {session.sessionId
-                ? `${session.totalSentences} items in search space`
-                : "No active session"}
+              {!session.sessionId
+                ? "Ready"
+                : session.totalSentences > 0
+                  ? `${session.totalSentences} items in search space`
+                  : "General chat · no documents"}
             </span>
 
             <div className="flex-1" />
@@ -1146,7 +1348,7 @@ export default function Home() {
                     onSend={handleSend}
                     onFileAttach={handleFileAttach}
                     disabled={isProcessing}
-                    placeholder="Ask about the retrieved documents..."
+                    placeholder="Ask anything"
                     attachedFiles={pendingFiles}
                     onRemoveFile={removePendingFile}
                   />

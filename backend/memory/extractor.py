@@ -53,6 +53,8 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     Turn ID: {turn.turn_index}
     Query: {turn.resolved_query}
     Assistant Answer: {turn.answer}
+
+    Respond with a json object matching the required schema.
     """
     
     try:

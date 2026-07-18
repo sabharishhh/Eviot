@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from backend.memory.reconciler import reconcile_and_save
+from backend.memory.context import get_relevant_memory_records
+from backend.memory.summarizer import build_session_summary
 
 import sys
 import os
@@ -30,6 +32,8 @@ from openai import OpenAI
 from session import (
     create_session, store_sentences, append_sentences,
     get_session, SentenceRecord, ConversationTurn, append_turn,
+    list_sessions, delete_session, save_summary,
+    split_conversation, visible_turn_record_ids, CONTEXT_WINDOW_TURNS,
     turn_to_sentence_records,
 )
 from ingestion.parser import parse_file
@@ -38,6 +42,7 @@ from ingestion.chunker import chunk_into_sentences
 from retrieval.naive_rag import naive_top_k, compute_internal_redundancy
 from retrieval.ot_engine import encode_query_plain, encode_query_decomposed, run_ot_selection_streaming
 from retrieval.llm_engine import run_llm_selection_streaming
+from retrieval.relevance import filter_relevant_records
 
 from llm.answer import get_llm_answer
 from demo.scenarios import SCENARIOS
@@ -54,10 +59,9 @@ encoder = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global encoder
-    print("Loading BAAI/bge-base-en-v1.5 encoder...")
+    print("Loading encoder...")
     encoder = Encoder(model_name="text-embedding-3-small")
     
-    encoder.encode(["Preparing the encoder."])
     print("Encoder ready. FastAPI is up.")
     yield
 
@@ -74,29 +78,43 @@ def resolve_query_with_history(query: str, conversation: list) -> str:
     """Expand elliptical/referential queries using prior turns."""
     if not conversation:
         return query
-    
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return query
-    
+
     client = OpenAI(api_key=api_key)
-    
+
     history_text = "\n".join(
         f"Q{t.turn_index}: {t.original_query}\nA{t.turn_index}: {t.answer[:300]}..."
         for t in conversation[-8:]
     )
-    
+
     try:
         response = client.responses.create(
             model="gpt-5.6-terra",
             instructions=(
                 "Rewrite the user's query so it is fully self-contained. "
                 "Resolve pronouns and references to previous conversation. "
-                "If it is already self-contained, return it unchanged. "
+                "If it is already self-contained, return it unchanged.\n\n"
+                "The prior answers are provided ONLY to help you interpret references. "
+                "Never fold an answer's content into the rewritten query.\n\n"
+                "RULES:\n"
+                "- The rewrite must remain an UNANSWERED question. If your rewrite "
+                "contains the answer, you have gone too far — return the original.\n"
+                "- Resolve references to things the USER introduced: places, objects, "
+                "times, topics ('there' -> Lisbon, 'that month' -> October).\n"
+                "- NEVER substitute the value of an attribute the user is asking about. "
+                "'What is my name?' stays 'What is my name?' — it must NOT become "
+                "'What is <name>'s name?'. The same applies to any 'my X' / 'the X of Y' "
+                "question where a previous answer supplied X.\n"
+                "- When in doubt, change less. Returning the query unchanged is always "
+                "safer than over-resolving.\n"
                 "Return only the rewritten query."
             ),
             input=(
-                f"Conversation so far:\n{history_text}\n\n"
+                f"Conversation so far (answers are context for interpretation only):\n"
+                f"{history_text}\n\n"
                 f"New user query: {query}"
             ),
             reasoning={
@@ -165,8 +183,13 @@ async def ingest_documents(
         session = create_session()
         is_new_session = True
     
-    # Track existing doc count for unique IDs
-    existing_count = len(set(r.source_doc for r in session.sentences))
+    # Count only real ingested documents — conversation-history and memory
+    # records also carry a source_doc and would otherwise inflate doc IDs
+    # once a user chats before uploading.
+    existing_count = len({
+        r.source_doc for r in session.sentences
+        if r.source_doc != "conversation_history" and not r.id.startswith("mem_")
+    })
     
     new_sentence_records = []
     doc_summaries = []
@@ -233,47 +256,101 @@ class QueryRequest(BaseModel):
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
-    sync_memory_to_session(req.session_id)
     session = get_session(req.session_id)
-    sentences = session.sentences if session else []
+    base_sentences = session.sentences if session else []
     conversation = session.conversation if session else []
- 
+
+    # Turns the model will read verbatim vs. turns only retrieval can reach.
+    visible_turns, _archived = split_conversation(conversation)
+    hidden_ids = visible_turn_record_ids(visible_turns)
+    retrievable = [r for r in base_sentences if r.id not in hidden_ids]
+    session_summary = session.summary if session else None
+
     async def event_generator():
         try:
             # 1. Resolve query against conversation history
-            resolved_query = resolve_query_with_history(req.query, conversation)
-            
+            resolved_query = resolve_query_with_history(req.query, visible_turns)
+
             if resolved_query != req.query:
                 yield make_sse_event("query_resolved", {
                     "original": req.query,
                     "resolved": resolved_query
                 })
- 
-            # ---------------------------------------------------
-            # NEW: Bridge the vocabulary gap before embedding
-            # ---------------------------------------------------
-            expanded_query = expand_query_vocabulary(resolved_query)
 
-            # 2. Embed
-            if req.use_decomposition:
-                phrases, q_embs = encode_query_decomposed(expanded_query, encoder)
-                yield make_sse_event("query_embedded", {
-                    "decomposed": True,
-                    "phrases": phrases,
-                })
+            # 2. Gate on the resolved query BEFORE expansion.
+            # expand_query_vocabulary() invents keywords, which helps retrieval
+            # recall but destroys the relevance signal — "hii" gets expanded into
+            # arbitrary content words that then match memories. Plain (non-
+            # decomposed) embedding too: max-over-sub-phrases inflates the score
+            # with query length.
+            gate_embs = encode_query_plain(req.query, encoder)
+
+            # Memories are scored and attached per query rather than living in
+            # the session pool — see memory/context.py.
+            memory_records, mem_stats = get_relevant_memory_records(gate_embs, encoder)
+            sentences = list(retrievable) + memory_records
+
+            # --- Relevance gate ------------------------------------------------
+            # The OT selector stops on marginal cost decay and always returns at
+            # least one sentence — it has no absolute relevance floor. Without
+            # this gate, a general-chat question on a doc-less session would drag
+            # in the nearest past turn or memory and present it as DOCUMENT
+            # CONTEXT. See retrieval/relevance.py.
+            candidates, max_relevance = filter_relevant_records(gate_embs, sentences)
+
+            if not sentences:
+                gate_reason = "no_documents"
+            elif not candidates:
+                gate_reason = "below_relevance_floor"
             else:
-                q_embs = encode_query_plain(expanded_query, encoder)
-                yield make_sse_event("query_embedded", {
-                    "decomposed": False,
-                    "phrases": None,
-                })
- 
+                gate_reason = None
+
+            print(
+                f"[gate] raw={req.query!r} resolved={resolved_query!r} "
+                f"max_rel={max_relevance:.4f} pool={len(sentences)} kept={len(candidates)} "
+                f"reason={gate_reason} | mem {mem_stats['kept']}/{mem_stats['total']} "
+                f"top={mem_stats['max_score']} cache={mem_stats.get('cache_size', 0)} "
+                f"| turns visible={len(visible_turns)} hidden_recs={len(hidden_ids)} "
+                f"summary={'y' if session_summary else 'n'}"
+            )
+
+            yield make_sse_event("relevance_gate", {
+                "passed": gate_reason is None,
+                "reason": gate_reason,
+                "resolved_query": resolved_query,
+                "max_relevance": round(max_relevance, 4),
+                "pool_size": len(sentences),
+                "candidate_size": len(candidates),
+                "memories_total": mem_stats["total"],
+                "memories_kept": mem_stats["kept"],
+                "turns_visible": len(visible_turns),
+                "hidden_records": len(hidden_ids),
+                "has_summary": bool(session_summary),
+            })
+
             selected_texts = []
             selected_ids = []
- 
-            if sentences:
+
+            if gate_reason is None:
+                # 3. Only now bridge the vocabulary gap — expansion costs an LLM
+                # call and is worthless when we aren't retrieving.
+                expanded_query = expand_query_vocabulary(resolved_query)
+
+                if req.use_decomposition:
+                    phrases, q_embs = encode_query_decomposed(expanded_query, encoder)
+                    yield make_sse_event("query_embedded", {
+                        "decomposed": True,
+                        "phrases": phrases,
+                    })
+                else:
+                    q_embs = encode_query_plain(expanded_query, encoder)
+                    yield make_sse_event("query_embedded", {
+                        "decomposed": False,
+                        "phrases": None,
+                    })
+
                 if req.retrieval_engine == "llm":
-                    event_stream = run_llm_selection_streaming(resolved_query, sentences)
+                    event_stream = run_llm_selection_streaming(resolved_query, candidates)
                 else:
                     # Merge default hyperparameters with incoming evaluation overrides
                     runtime_params = {
@@ -286,43 +363,54 @@ async def query_endpoint(req: QueryRequest):
 
                     event_stream = run_ot_selection_streaming(
                         query_embs=q_embs,
-                        sentence_records=sentences,
+                        sentence_records=candidates,
                         mode=req.mode,
                         params=runtime_params,
                     )
- 
+
                 for event in event_stream:
                     if event["event"] == "selection_step":
                         selected_texts.append(event["sentence_text"])
                         selected_ids.append(event["sentence_id"])
                     elif event["event"] == "saturation_reached":
                         tail = event.get("tail_truncated", 0)
+
                         if tail > 0 and len(selected_texts) > tail + 1:
                             selected_texts = selected_texts[:-tail]
                             selected_ids = selected_ids[:-tail]
- 
+
                     yield make_sse_event(event["event"], event)
-                    
+
                     if req.retrieval_engine == "llm":
-                        await asyncio.sleep(0.3) 
+                        await asyncio.sleep(0.3)
                     else:
                         await asyncio.sleep(0)
             else:
+                yield make_sse_event("query_embedded", {
+                    "decomposed": False,
+                    "phrases": None,
+                })
                 yield make_sse_event("saturation_reached", {
                     "step": 0, "final_ot_cost": 0.0, "final_coverage_pct": 0.0,
                     "total_sentences_selected": 0, "total_tokens": 0,
-                    "stopping_reason": "no_documents", "tail_truncated": 0
+                    "stopping_reason": gate_reason,
+                    "max_relevance": round(max_relevance, 4),
+                    "tail_truncated": 0,
                 })
- 
-            # 3. Generate answer with conversation history 
+
+            # 4. Generate answer with conversation history
             # (Passing the original resolved_query so the LLM doesn't get confused by the raw keywords)
             full_answer = ""
-            for token in get_llm_answer(selected_texts, resolved_query, conversation):
+            grounded = bool(selected_texts)
+            for token in get_llm_answer(
+                selected_texts, resolved_query, visible_turns,
+                grounded=grounded, summary=session_summary,
+            ):
                 full_answer += token
                 yield make_sse_event("llm_token", {"token": token})
                 await asyncio.sleep(0)
- 
-            # 4. Store the turn
+
+            # 5. Store the turn
             if session:
                 turn = ConversationTurn(
                     turn_index=len(conversation) + 1,
@@ -335,13 +423,14 @@ async def query_endpoint(req: QueryRequest):
                 if not req.is_eval:
                     turn_records = turn_to_sentence_records(turn, encoder)
                     append_sentences(req.session_id, turn_records)
-                    
+
                 # ---------------------------------------------------
                 # NEW: Trigger asynchronous shadow extraction
                 # ---------------------------------------------------
                 if not req.is_eval:
                     asyncio.create_task(background_memory_extraction(turn, req.session_id))
- 
+                    asyncio.create_task(background_summary_update(req.session_id))
+
             yield make_sse_event("answer_complete", {
                 "answer": full_answer,
                 "context_sentences": selected_texts,
@@ -351,11 +440,11 @@ async def query_endpoint(req: QueryRequest):
                 "turns_remaining": MAX_TURNS - len(conversation) - 1,
                 "resolved_query": resolved_query,
             })
-            
+
         except Exception as e:
             traceback.print_exc()
             yield make_sse_event("stream_error", {"detail": str(e)})
- 
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -399,6 +488,35 @@ async def compare_endpoint(req: CompareRequest):
         "internal_redundancy": redundancy,
         "llm_answer": naive_answer
     }
+
+@app.post("/session")
+async def create_empty_session():
+    """Create a session with no documents, for general chat.
+
+    Decouples session creation from /ingest so the frontend can start a
+    conversation before (or without) uploading anything.
+    """
+    session = create_session()
+    return {
+        "session_id": session.session_id,
+        "documents": [],
+        "total_sentences": 0,
+        "is_new_session": True,
+    }
+
+@app.get("/sessions")
+async def get_sessions():
+    """Lightweight list for the sidebar: title, doc names, turn count, timestamps."""
+    return {"sessions": list_sessions()}
+
+
+@app.delete("/session/{session_id}")
+async def remove_session(session_id: str):
+    existed = delete_session(session_id)
+    if not existed:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"session_id": session_id, "deleted": True}
+
 
 @app.get("/session/{session_id}/info")
 async def get_session_info(session_id: str):
@@ -520,7 +638,7 @@ async def load_locomo_session(req: LocomoLoadRequest):
 
 def sync_memory_to_session(session_id: str):
     """
-    Loads OKF memory files, converts them into SentenceRecords, 
+    Loads OKF memory files, converts them into SentenceRecords,
     and synchronizes them with the current session context pool.
     """
     session = get_session(session_id)
@@ -528,46 +646,53 @@ def sync_memory_to_session(session_id: str):
         return
 
     memories = load_okf_memories()
-    new_memory_records = []
-    
-    # Get a list of IDs currently in the session to prevent duplication
+    active_ids = {f"mem_{m['metadata'].get('id')}" for m in memories}
+
+    # Evict memory records that are no longer active. reconcile_and_save flips
+    # status to `superseded` rather than deleting, and /memory/{file} deletes
+    # outright — neither was previously reflected in a live session pool.
+    stale = {
+        r.id for r in session.sentences
+        if r.id.startswith("mem_") and r.id not in active_ids
+    }
+    if stale:
+        session.sentences[:] = [r for r in session.sentences if r.id not in stale]
+
     existing_ids = {rec.id for rec in session.sentences}
+    new_memory_records = []
 
     for mem in memories:
         meta = mem["metadata"]
-        mem_id = meta.get("id")
-        record_id = f"mem_{mem_id}"
-        
-        # Skip if this memory is already loaded in the session context
+        record_id = f"mem_{meta.get('id')}"
+
         if record_id in existing_ids:
             continue
-            
-        # Construct a dense text representation for the OT Engine and LLM
+
         mem_type = meta.get('type', 'fact').upper()
         subject = meta.get('subject', 'System')
         predicate = meta.get('predicate', 'stated')
         obj = meta.get('object', '')
-        
-        dense_text = (
-            f"[MEMORY: {mem_type}] {subject} {predicate} {obj}. "
-            f"{mem['body']}"
-        )
-        
-        # Embed the memory
-        emb = encoder.encode([dense_text])[0].cpu()
-        
+
+        body_lines = [
+            ln.strip() for ln in mem["body"].splitlines()
+            if ln.strip() and not ln.strip().startswith("#")
+        ]
+        clean_body = " ".join(body_lines)
+
+        embed_text = f"{subject} {predicate} {obj}. {clean_body}".strip()
+        display_text = f"[MEMORY: {mem_type}] {embed_text}"
+
+        emb = encoder.encode([embed_text])[0].cpu()
+
         new_memory_records.append(
             SentenceRecord(
                 id=record_id,
-                text=dense_text,
+                text=display_text,
                 source_doc=f"Memory Store ({mem['file_name']})",
                 source_line=1,
                 embedding=emb
             )
         )
-        
-    if new_memory_records:
-        append_sentences(session_id, new_memory_records)
 
 
 async def background_memory_extraction(turn: ConversationTurn, session_id: str):
@@ -579,6 +704,27 @@ async def background_memory_extraction(turn: ConversationTurn, session_id: str):
             reconcile_and_save(candidate, session_id, turn.turn_index) 
             
     await asyncio.to_thread(run_sync_pipeline)
+
+async def background_summary_update(session_id: str):
+    """Refresh the rolling summary once turns fall out of the visible window."""
+    def run_sync():
+        session = get_session(session_id)
+        if not session:
+            return
+
+        _, archived = split_conversation(session.conversation)
+        if not archived:
+            return
+
+        pending = [t for t in archived if t.turn_index > (session.summary_through_turn or 0)]
+        if not pending:
+            return
+
+        updated = build_session_summary(session.summary, pending)
+        if updated:
+            save_summary(session_id, updated, archived[-1].turn_index)
+
+    await asyncio.to_thread(run_sync)
 
 class MemoryUpdateRequest(BaseModel):
     file_name: str
