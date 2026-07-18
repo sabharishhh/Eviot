@@ -15,8 +15,12 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
+import os
 
 import requests
+
+from dotenv import load_dotenv
+load_dotenv()
 
 BASE = "http://localhost:8000"
 DB_PATH = Path(".eviot/sessions.db")
@@ -219,6 +223,21 @@ def test_archiving_and_recall():
     record("answer mentions Lisbon", "lisbon" in r["answer"].lower(),
            r["answer"][:80])
 
+    # The check above can pass for the wrong reason. A memory clearing its own
+    # (much lower) floor opens the gate, after which archived turns enter as
+    # prefilter candidates via the relaxed margin — even when history alone
+    # would never have qualified. Assert the gate would have opened regardless.
+    #
+    # Not airtight: max_relevance is the max across the whole pool, so a
+    # high-scoring memory could satisfy it. Combined with the presence of
+    # history sources it's a reasonable proxy; tightening it further would
+    # need per-source scores in the relevance_gate event.
+    history_floor = float(os.getenv("EVIOT_HISTORY_FLOOR", 0.32))
+    hist_sources = [s for s in r["sources"] if "conversation" in s]
+    record("history clears its own floor, not carried by memory",
+           r["gate"]["max_relevance"] >= history_floor and len(hist_sources) > 0,
+           f"max_rel={r['gate']['max_relevance']} floor={history_floor} "
+           f"history_sources={len(hist_sources)}")
 
 # ─── Runner ──────────────────────────────────────────────────────────────────
 
