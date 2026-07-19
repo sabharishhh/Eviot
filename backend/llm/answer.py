@@ -37,6 +37,7 @@ def get_llm_answer(
     conversation: list = None,
     grounded: bool = None,
     summary: str = None,
+    standing: list[str] = None,
 ) -> Generator[str, None, None]:
     """
     Stream LLM answer tokens with separate boundaries for document facts
@@ -52,6 +53,17 @@ def get_llm_answer(
         [f"[{idx+1}] {s}" for idx, s in enumerate(context_sentences)]
     )
     system_prompt = _GROUNDED_PROMPT if grounded else _OPEN_PROMPT
+
+    # Standing instructions apply to every reply, so they belong in the system
+    # prompt rather than the retrieved-context block. Placed last so they take
+    # precedence over the generic formatting guidance above.
+    if standing:
+        print(f"[standing] {len(standing)} injected: {standing}")
+        rules = "\n".join(f"- {s}" for s in standing)
+        system_prompt += (
+            "\n\nSTANDING USER INSTRUCTIONS (persist across all sessions; follow "
+            "them unless the current message overrides them):\n" + rules
+        )
 
     from dotenv import load_dotenv
     load_dotenv()

@@ -43,3 +43,14 @@
 [2026-07-18 20:24:51] DELETED memory file 5e1a80e0_791334b7.md via UI
 [2026-07-18 20:24:54] DELETED memory file 5e1a80e0_98d1b268.md via UI
 [2026-07-18 20:25:16] CREATED memory file .eviot/memory/sessions/df7a4935_8fe1e54a.md (Session: df7a4935, Turn: 3)
+[2026-07-18 20:49:12] SUPERSEDED memory 8fe1e54a (Merged duplicate/update)
+[2026-07-18 20:49:12] CREATED memory file .eviot/memory/sessions/e88472be_47321b1d.md (Session: e88472be, Turn: 3, Scope: always)
+[2026-07-18 20:49:14] CREATED memory file .eviot/memory/sessions/e88472be_647bab20.md (Session: e88472be, Turn: 3, Scope: always)
+[2026-07-18 20:57:44] DELETED memory file e88472be_647bab20.md via UI
+[2026-07-18 20:57:47] DELETED memory file e88472be_47321b1d.md via UI
+[2026-07-18 20:58:14] CREATED memory file .eviot/memory/sessions/883434ee_4ef775b6.md (Session: 883434ee, Turn: 3, Scope: always)
+[2026-07-18 20:58:16] CREATED memory file .eviot/memory/sessions/883434ee_fae219c1.md (Session: 883434ee, Turn: 3, Scope: always)
+[2026-07-19 08:04:44] SUPERSEDED memory 4ef775b6 (Merged duplicate/update)
+[2026-07-19 08:04:44] CREATED memory file .eviot/memory/sessions/bea1156e_e6a92410.md (Session: bea1156e, Turn: 3, Scope: always)
+[2026-07-19 08:04:50] SUPERSEDED memory fae219c1 (Merged duplicate/update)
+[2026-07-19 08:04:50] CREATED memory file .eviot/memory/sessions/bea1156e_f33e2f8f.md (Session: bea1156e, Turn: 3, Scope: always)

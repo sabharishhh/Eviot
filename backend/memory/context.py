@@ -88,20 +88,27 @@ def get_relevant_memory_records(
     encoder,
     floor: Optional[float] = None,
 ) -> tuple[List["SentenceRecord"], dict]:
-    """Score the memory store against this query and return only what clears
-    the floor, capped at MEMORY_TOP_K and ordered by relevance.
+    """Score the on-demand memory store against this query and return only what
+    clears the floor, capped at MEMORY_TOP_K and ordered by relevance.
+
+    Standing memories (scope: always) are excluded here — they reach the prompt
+    via get_standing_memories() instead. Scoring an instruction against the
+    query guarantees it surfaces only when the user asks about it, which is
+    exactly when it is least needed.
 
     Memories are deliberately NOT added to session.sentences — they are
     rebuilt per query. Injecting them into the persistent pool meant deleted
     and superseded memories lingered, every session file carried a duplicate
     snapshot, and irrelevant facts competed in every retrieval.
     """
-    if encoder is None:
-        return [], {"total": 0, "kept": 0, "max_score": 0.0}
+    empty = {"total": 0, "kept": 0, "max_score": 0.0, "cache_size": len(_EMBED_CACHE)}
 
-    memories = load_okf_memories()
+    if encoder is None:
+        return [], empty
+
+    memories = [m for m in load_okf_memories() if _scope_of(m) == "on_demand"]
     if not memories:
-        return [], {"total": 0, "kept": 0, "max_score": 0.0}
+        return [], empty
 
     if floor is None:
         try:
@@ -152,3 +159,35 @@ def get_relevant_memory_records(
         "cache_size": len(_EMBED_CACHE),
     }
     return records, stats
+
+STANDING_MAX = _env_int("EVIOT_STANDING_MAX", 15)
+
+
+def _scope_of(mem: dict) -> str:
+    """Scope, inferred for memories written before the field existed."""
+    scope = str(mem["metadata"].get("scope", "")).strip().lower()
+    if scope in ("always", "on_demand"):
+        return scope
+    mem_type = str(mem["metadata"].get("type", "")).lower()
+    return "always" if mem_type in ("preference", "decision") else "on_demand"
+
+
+def get_standing_memories() -> List[str]:
+    """Memories that apply regardless of the question.
+
+    These bypass the relevance gate entirely — an instruction is not evidence,
+    and scoring it against the query guarantees it only appears when the user
+    asks about it, which is exactly when it is least needed.
+    """
+    out = []
+    for mem in load_okf_memories():
+        if _scope_of(mem) != "always":
+            continue
+        meta = mem["metadata"]
+        body_lines = [ln.strip() for ln in mem["body"].splitlines()
+                      if ln.strip() and not ln.strip().startswith("#")]
+        out.append(" ".join(body_lines) or
+                   f"{meta.get('subject')} {meta.get('predicate')} {meta.get('object')}")
+        if len(out) >= STANDING_MAX:
+            break
+    return out

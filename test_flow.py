@@ -48,7 +48,7 @@ def ask(session_id, query):
         "query": query,
         "mode": "adaptive",
         "use_decomposition": True,
-        "retrieval_engine": "ot",
+        "retrieval_engine": "naive",
         "params": {"epsilon": 0.01, "patience": 2, "k_max": 12, "k": 5},
     }
     gate, sources, answer = None, [], ""

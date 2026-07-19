@@ -31,6 +31,10 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
     4. ENTITY LENGTH: The 'subject' and 'object' fields MUST be 1 to 3 words maximum (e.g., 'PostgreSQL', 'FastAPI', 'Backend Database'). Never use full sentences.
     5. USER COMMANDS ONLY: ONLY extract decisions explicitly declared by the User. Ignore the Assistant's summaries of the uploaded documents.
     6. PERSON FACTS: for facts about the user, 'subject' is ALWAYS the literal string 'User' — never the person's name. Write 'User / is named / Sabharish PV'. Never 'Sabharish PV / is named / Sabharish PV' or 'Sabharish PV / is / user name'. The subject is who the fact is about; the object is the value.
+    7. SCOPE — the single most important field. Ask: does this apply no matter what the user asks next?
+       - "always": standing instructions and constraints on how to respond. Formatting preferences, tone, language, rules to follow, decisions that govern future work ("we use PostgreSQL", "always answer in Spanish", "no bullet points"). These are injected into every reply.
+       - "on_demand": facts and events, retrieved only when relevant to the question. Names, dates, project details, things that happened.
+       When unsure choose "on_demand" — a fact that fails to surface is recoverable; a wrong instruction applied to every reply is not.
     
     Output a JSON object exactly matching this schema:
     {
@@ -41,6 +45,7 @@ def extract_memory_candidates(turn: ConversationTurn, session_id: str) -> dict:
           "predicate": "<verb>",
           "object": "<target_value_1_to_3_words>",
           "epistemic_state": "<decided|considered|preferred>",
+          "scope": "<always|on_demand>",
           "summary": "<one_sentence_summary>",
           "confidence": <float_0_to_1>
         }

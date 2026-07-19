@@ -42,7 +42,7 @@ from ingestion.chunker import chunk_into_sentences
 from retrieval.naive_rag import naive_top_k, compute_internal_redundancy
 from retrieval.ot_engine import encode_query_plain, encode_query_decomposed, run_ot_selection_streaming
 from retrieval.llm_engine import run_llm_selection_streaming
-from retrieval.relevance import filter_relevant_records
+from retrieval.relevance import filter_relevant_records, RELEVANCE_FLOOR, MEMORY_FLOOR, HISTORY_FLOOR
 
 from llm.answer import get_llm_answer
 from demo.scenarios import SCENARIOS
@@ -50,6 +50,7 @@ from demo.scenarios import SCENARIOS
 from eviot.encoders.encoder import Encoder
 from backend.memory.extractor import extract_memory_candidates
 from backend.memory.okf_writer import write_okf_memory
+from backend.memory.context import get_relevant_memory_records, get_standing_memories
 
 MAX_TURNS = 10
 MEMORY_DIR = Path(".eviot/memory/sessions").resolve()
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
     encoder = Encoder(model_name="text-embedding-3-small")
     
     print("Encoder ready. FastAPI is up.")
+    print(f"Floors: relevance={RELEVANCE_FLOOR} memory={MEMORY_FLOOR} history={HISTORY_FLOOR}")
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -266,16 +268,29 @@ async def query_endpoint(req: QueryRequest):
     retrievable = [r for r in base_sentences if r.id not in hidden_ids]
     session_summary = session.summary if session else None
 
+    # Standing instructions (scope: always) bypass retrieval entirely and go
+    # into the system prompt on every turn. They are constraints on how to
+    # respond, not evidence about the question — scoring them against the query
+    # guarantees they only surface when the user asks about them, which is
+    # precisely when they are least needed.
+    standing = get_standing_memories()
+
     async def event_generator():
         try:
-            # 1. Resolve query against conversation history
-            resolved_query = resolve_query_with_history(req.query, visible_turns)
+            # 1. Resolve query against conversation history.
+            # In eval mode we skip resolver/expander/answer LLM calls — the
+            # benchmark scores retrieval only, so paying for the full pipeline
+            # per question turns a few-dollar run into a hundred-dollar one.
+            if req.is_eval:
+                resolved_query = req.query
+            else:
+                resolved_query = resolve_query_with_history(req.query, visible_turns)
 
-            if resolved_query != req.query:
-                yield make_sse_event("query_resolved", {
-                    "original": req.query,
-                    "resolved": resolved_query
-                })
+                if resolved_query != req.query:
+                    yield make_sse_event("query_resolved", {
+                        "original": req.query,
+                        "resolved": resolved_query
+                    })
 
             # 2. Gate on the resolved query BEFORE expansion.
             # expand_query_vocabulary() invents keywords, which helps retrieval
@@ -285,8 +300,8 @@ async def query_endpoint(req: QueryRequest):
             # with query length.
             gate_embs = encode_query_plain(req.query, encoder)
 
-            # Memories are scored and attached per query rather than living in
-            # the session pool — see memory/context.py.
+            # On-demand memories are scored and attached per query rather than
+            # living in the session pool — see memory/context.py.
             memory_records, mem_stats = get_relevant_memory_records(gate_embs, encoder)
             sentences = list(retrievable) + memory_records
 
@@ -311,7 +326,7 @@ async def query_endpoint(req: QueryRequest):
                 f"reason={gate_reason} | mem {mem_stats['kept']}/{mem_stats['total']} "
                 f"top={mem_stats['max_score']} cache={mem_stats.get('cache_size', 0)} "
                 f"| turns visible={len(visible_turns)} hidden_recs={len(hidden_ids)} "
-                f"summary={'y' if session_summary else 'n'}"
+                f"summary={'y' if session_summary else 'n'} standing={len(standing)}"
             )
 
             yield make_sse_event("relevance_gate", {
@@ -326,6 +341,7 @@ async def query_endpoint(req: QueryRequest):
                 "turns_visible": len(visible_turns),
                 "hidden_records": len(hidden_ids),
                 "has_summary": bool(session_summary),
+                "standing_count": len(standing),
             })
 
             selected_texts = []
@@ -333,8 +349,9 @@ async def query_endpoint(req: QueryRequest):
 
             if gate_reason is None:
                 # 3. Only now bridge the vocabulary gap — expansion costs an LLM
-                # call and is worthless when we aren't retrieving.
-                expanded_query = expand_query_vocabulary(resolved_query)
+                # call and is worthless when we aren't retrieving. Also skipped
+                # in eval mode.
+                expanded_query = resolved_query if req.is_eval else expand_query_vocabulary(resolved_query)
 
                 if req.use_decomposition:
                     phrases, q_embs = encode_query_decomposed(expanded_query, encoder)
@@ -351,6 +368,22 @@ async def query_endpoint(req: QueryRequest):
 
                 if req.retrieval_engine == "llm":
                     event_stream = run_llm_selection_streaming(resolved_query, candidates)
+                elif req.retrieval_engine == "naive":
+                    # Top-k baseline for head-to-head against OT. Non-streaming,
+                    # so wrap the returned list to look like the OT event stream.
+                    k = (req.params or {}).get("k", 5)
+                    top = naive_top_k(q_embs, candidates, k=k)
+                    def _naive_stream():
+                        for i, hit in enumerate(top, 1):
+                            yield {"event": "selection_step", "step": i, **hit}
+                        yield {
+                            "event": "saturation_reached", "step": len(top),
+                            "final_ot_cost": 0.0, "final_coverage_pct": 0.0,
+                            "total_sentences_selected": len(top), "total_tokens": 0,
+                            "stopping_reason": "naive_top_k",
+                            "tail_truncated": 0,
+                        }
+                    event_stream = _naive_stream()
                 else:
                     # Merge default hyperparameters with incoming evaluation overrides
                     runtime_params = {
@@ -398,17 +431,19 @@ async def query_endpoint(req: QueryRequest):
                     "tail_truncated": 0,
                 })
 
-            # 4. Generate answer with conversation history
-            # (Passing the original resolved_query so the LLM doesn't get confused by the raw keywords)
+            # 4. Generate answer with conversation history.
+            # Skipped in eval mode — the benchmark scores retrieved sentence IDs
+            # against ground-truth evidence and never inspects the answer.
             full_answer = ""
-            grounded = bool(selected_texts)
-            for token in get_llm_answer(
-                selected_texts, resolved_query, visible_turns,
-                grounded=grounded, summary=session_summary,
-            ):
-                full_answer += token
-                yield make_sse_event("llm_token", {"token": token})
-                await asyncio.sleep(0)
+            if not req.is_eval:
+                grounded = bool(selected_texts)
+                for token in get_llm_answer(
+                    selected_texts, resolved_query, visible_turns,
+                    grounded=grounded, summary=session_summary, standing=standing,
+                ):
+                    full_answer += token
+                    yield make_sse_event("llm_token", {"token": token})
+                    await asyncio.sleep(0)
 
             # 5. Store the turn
             if session:
